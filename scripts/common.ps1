@@ -2,6 +2,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $script:ProjectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 
+Remove-Item env:ANDROID_PREFS_ROOT -ErrorAction SilentlyContinue
+
 function Get-ProjectPath([string] $RelativePath) {
     return Join-Path $script:ProjectRoot $RelativePath
 }

@@ -1,0 +1,110 @@
+name: Build Patched APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      apk_url:
+        description: 'Direct download URL for Twitch APK/APKM (Optional - leave empty if using repository secret TWITCH_APK_URL)'
+        required: false
+        type: string
+  push:
+    branches: [main, dev]
+
+jobs:
+  build-apk:
+    name: Build Patched APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Ensure Android SDK Platform 36
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"'
+
+      - name: Bootstrap Morphe tools
+        shell: pwsh
+        run: ./scripts/bootstrap-tools.ps1
+
+      - name: Build patch bundle (.mpp)
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./scripts/build.ps1
+
+      - name: Obtain Twitch APK / APKM
+        shell: pwsh
+        env:
+          INPUT_URL: ${{ inputs.apk_url }}
+          SECRET_URL: ${{ secrets.TWITCH_APK_URL }}
+        run: |
+          $url = $env:INPUT_URL
+          if (-not $url) { $url = $env:SECRET_URL }
+          if ($url) {
+              Write-Host "Downloading Twitch APK/APKM from provided URL..."
+              Invoke-WebRequest -Uri $url -OutFile "twitch.apkm"
+          } elseif (Test-Path "twitch.apkm") {
+              Write-Host "Using twitch.apkm in repository root."
+          } elseif (Test-Path "twitch.apk") {
+              Write-Host "Using twitch.apk in repository root."
+          } else {
+              Write-Host "No Twitch APK URL provided and no twitch.apkm found."
+              Write-Host "Skipping APK patching step. (.mpp bundle was built successfully)"
+              exit 0
+          }
+
+      - name: Patch APK with Morphe
+        if: hashFiles('twitch.apkm', 'twitch.apk') != ''
+        shell: pwsh
+        run: |
+          $patchNames = @(
+              "Fullscreen notch support",
+              "Clip-style chat animation",
+              "Auto-claim bonus channel points",
+              "BTTV and 7TV emotes",
+              "Block client-requested ads",
+              "Block stream ads",
+              "Hide Turbo promotions",
+              "Hide feed and display ads",
+              "Hide subscription discount banners",
+              "Reload stream"
+          )
+          $inputApk = if (Test-Path "twitch.apkm") { "twitch.apkm" } else { "twitch.apk" }
+          ./scripts/patch.ps1 -InputApk $inputApk -Patch $patchNames
+
+          $latestRun = Get-ChildItem -Path ".local/runs" -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if ($latestRun) {
+              $patched = Get-ChildItem -Path $latestRun.FullName -Filter "*patched*.apk" | Select-Object -First 1
+              if ($patched) {
+                  Copy-Item -Path $patched.FullName -Destination "twitch_patched.apk" -Force
+                  Write-Host "Successfully generated twitch_patched.apk"
+              }
+          }
+
+      - name: Upload Patched APK Artifact
+        if: hashFiles('twitch_patched.apk') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: twitch_patched.apk
+          path: twitch_patched.apk
+          retention-days: 14

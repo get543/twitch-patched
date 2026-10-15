@@ -14,6 +14,7 @@ Select each feature independently when patching. Included features appear under 
 | Hide subscription discount banners | Hides subscription offers and promotional labels, while retaining normal subscription actions. |
 | Auto-claim bonus channel points | Claims available bonus rewards in live playback. |
 | BTTV and 7TV emotes | Renders global and channel emotes in chat with provider previews on tap. |
+| Landscape edge-to-edge playback | Hides system bars and extends landscape playback into display cutouts such as notches. |
 | Reload stream | Adds a reload button in live-player controls. Double-tap to reload. |
 | Block client-requested ads | Suppresses native ad requests. Restart Twitch after changing the setting. |
 | Playback diagnostics | Records playlist structure and playback frame counters. Disabled by default. |

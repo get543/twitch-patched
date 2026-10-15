@@ -11,7 +11,7 @@ object TwitchTarget {
     val candidateCompatibility = Compatibility(
         name = "Twitch",
         packageName = PACKAGE_NAME,
-        apkFileType = ApkFileType.APKM,
+        apkFileType = null,
         targets = listOf(
             AppTarget(
                 version = CANDIDATE_VERSION,

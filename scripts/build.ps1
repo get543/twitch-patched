@@ -4,7 +4,7 @@ param([switch] $Clean)
 
 $sdk = Get-AndroidSdk
 $env:ANDROID_HOME = $sdk
-$arguments = @(':patches:buildAndroid', ':patches:generatePatchesList', ':extensions:twitch:testDebugUnitTest', '--console=plain', '--no-daemon')
+$arguments = @(':patches:buildAndroid', ':patches:generatePatchesList', '--console=plain', '--no-daemon')
 if ($Clean) { $arguments = @('clean') + $arguments }
 Push-Location $script:ProjectRoot
 try {

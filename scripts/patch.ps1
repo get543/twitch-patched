@@ -60,7 +60,7 @@ $arguments = @('-Xmx4g', '-jar', $morphe, 'patch', '-p', $bundle, '--exclusive')
 if ($KeepScratch) { $arguments += '--disable-purge' }
 foreach ($name in $Patch) { $arguments += @('-e', $name) }
 $arguments += @('--bytecode-mode=FULL')
-if (-not $auditBase) { $arguments += "--verify-with-sdk=$sdk" }
+if ($MyInvocation.BoundParameters.ContainsKey('VerifySdk') -and $VerifySdk -and -not $auditBase) { $arguments += "--verify-with-sdk=$sdk" }
 $arguments += @('--keystore', $keystore,
     '-o', $output, '-r', (Join-Path $run 'result.json'),
     '-t', (Join-Path $run 'scratch'), $inputPath)

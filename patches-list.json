@@ -17,7 +17,7 @@
           "packageName": "tv.twitch.android.app",
           "name": "Twitch",
           "description": null,
-          "apkFileType": "APKM",
+          "apkFileType": null,
           "appIconColor": null,
           "signatures": null,
           "targets": [
@@ -55,7 +55,7 @@
           "packageName": "tv.twitch.android.app",
           "name": "Twitch",
           "description": null,
-          "apkFileType": "APKM",
+          "apkFileType": null,
           "appIconColor": null,
           "signatures": null,
           "targets": [
@@ -91,7 +91,7 @@
           "packageName": "tv.twitch.android.app",
           "name": "Twitch",
           "description": null,
-          "apkFileType": "APKM",
+          "apkFileType": null,
           "appIconColor": null,
           "signatures": null,
           "targets": [
@@ -128,7 +128,43 @@
           "packageName": "tv.twitch.android.app",
           "name": "Twitch",
           "description": null,
-          "apkFileType": "APKM",
+          "apkFileType": null,
+          "appIconColor": null,
+          "signatures": null,
+          "targets": [
+            {
+              "version": "31.3.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": "31.4.2",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Clip-style chat animation",
+      "description": "Experimental clip-style chat mode hook; fails when no matching Twitch method is found.",
+      "default": false,
+      "category": null,
+      "dependencies": [
+        "BytecodePatch"
+      ],
+      "compatiblePackages": [
+        {
+          "packageName": "tv.twitch.android.app",
+          "name": "Twitch",
+          "description": null,
+          "apkFileType": null,
           "appIconColor": null,
           "signatures": null,
           "targets": [
@@ -166,7 +202,7 @@
           "packageName": "tv.twitch.android.app",
           "name": "Twitch",
           "description": null,
-          "apkFileType": "APKM",
+          "apkFileType": null,
           "appIconColor": null,
           "signatures": null,
           "targets": [
@@ -204,7 +240,7 @@
           "packageName": "tv.twitch.android.app",
           "name": "Twitch",
           "description": null,
-          "apkFileType": "APKM",
+          "apkFileType": null,
           "appIconColor": null,
           "signatures": null,
           "targets": [
@@ -242,7 +278,7 @@
           "packageName": "tv.twitch.android.app",
           "name": "Twitch",
           "description": null,
-          "apkFileType": "APKM",
+          "apkFileType": null,
           "appIconColor": null,
           "signatures": null,
           "targets": [
@@ -276,7 +312,43 @@
           "packageName": "tv.twitch.android.app",
           "name": "Twitch",
           "description": null,
-          "apkFileType": "APKM",
+          "apkFileType": null,
+          "appIconColor": null,
+          "signatures": null,
+          "targets": [
+            {
+              "version": "31.3.0",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": "31.4.2",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Landscape edge-to-edge playback",
+      "description": "Uses immersive edge-to-edge display only while a live player is shown in landscape.",
+      "default": true,
+      "category": null,
+      "dependencies": [
+        "BytecodePatch"
+      ],
+      "compatiblePackages": [
+        {
+          "packageName": "tv.twitch.android.app",
+          "name": "Twitch",
+          "description": null,
+          "apkFileType": null,
           "appIconColor": null,
           "signatures": null,
           "targets": [
@@ -312,7 +384,7 @@
           "packageName": "tv.twitch.android.app",
           "name": "Twitch",
           "description": null,
-          "apkFileType": "APKM",
+          "apkFileType": null,
           "appIconColor": null,
           "signatures": null,
           "targets": [
@@ -350,7 +422,7 @@
           "packageName": "tv.twitch.android.app",
           "name": "Twitch",
           "description": null,
-          "apkFileType": "APKM",
+          "apkFileType": null,
           "appIconColor": null,
           "signatures": null,
           "targets": [
