@@ -25,4 +25,6 @@ object TwitchTarget {
             ),
         ),
     )
+
+    val candidateCompatibility = compatibility
 }

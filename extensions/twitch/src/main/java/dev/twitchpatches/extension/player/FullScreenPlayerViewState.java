@@ -1,9 +1,9 @@
 package dev.twitchpatches.extension.player;
 
 import android.app.Activity;
+import android.os.Build;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowInsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,10 +21,7 @@ final class FullScreenPlayerViewState {
     private final View.OnLayoutChangeListener layoutListener;
     private final View.OnAttachStateChangeListener attachListener;
     private final List<ClipState> clipStates = new ArrayList<>();
-    private int appliedLeft;
-    private int appliedTop;
-    private int appliedRight;
-    private int appliedBottom;
+    private boolean applied;
 
     FullScreenPlayerViewState(FullScreenNotchRuntime runtime, View playerView) {
         this.runtime = runtime;
@@ -69,70 +66,46 @@ final class FullScreenPlayerViewState {
     }
 
     void update() {
+        if (activity == null) activity = runtime.findActivity(view);
+
+        if (activity != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && activity.isInPictureInPictureMode()) {
+            restore();
+            return;
+        }
+
         if (!runtime.shouldExtendPlayer(view) || !view.isAttachedToWindow()) {
             restore();
             return;
         }
 
-        View root = view.getRootView();
-        WindowInsets insets = view.getRootWindowInsets();
-        if (insets == null || insets.getDisplayCutout() == null ||
-                root.getWidth() == 0 || root.getHeight() == 0) return;
-
-        int[] playerLocation = new int[2];
-        int[] rootLocation = new int[2];
-        view.getLocationOnScreen(playerLocation);
-        root.getLocationOnScreen(rootLocation);
-
-        int baseLeft = playerLocation[0] + appliedLeft;
-        int baseTop = playerLocation[1] + appliedTop;
-        int baseRight = playerLocation[0] + view.getWidth() - appliedRight;
-        int baseBottom = playerLocation[1] + view.getHeight() - appliedBottom;
-        int rootLeft = rootLocation[0];
-        int rootTop = rootLocation[1];
-        int rootRight = rootLeft + root.getWidth();
-        int rootBottom = rootTop + root.getHeight();
-        int left = extension(baseLeft - rootLeft, insets.getDisplayCutout().getSafeInsetLeft());
-        int top = extension(baseTop - rootTop, insets.getDisplayCutout().getSafeInsetTop());
-        int right = extension(rootRight - baseRight, insets.getDisplayCutout().getSafeInsetRight());
-        int bottom = extension(rootBottom - baseBottom, insets.getDisplayCutout().getSafeInsetBottom());
-
-        if (left == appliedLeft && top == appliedTop && right == appliedRight && bottom == appliedBottom) return;
-        if (left + top + right + bottom == 0) {
-            restore();
-            return;
-        }
-
-        ensureAncestorsDoNotClip();
-        appliedLeft = left;
-        appliedTop = top;
-        appliedRight = right;
-        appliedBottom = bottom;
-        applyMarginsAndSize();
+        ensureAncestorsExpandedAndUnclipped();
+        applied = true;
     }
 
-    private int extension(int gap, int inset) {
-        return FullScreenNotchRuntime.cutoutExtension(gap, inset);
-    }
-
-    private void applyMarginsAndSize() {
-        originalLayoutParams.width = originalWidth;
-        originalLayoutParams.height = originalHeight;
-        if (originalLayoutParams instanceof ViewGroup.MarginLayoutParams margins) {
-            margins.setMargins(originalLeftMargin - appliedLeft, originalTopMargin - appliedTop,
-                    originalRightMargin - appliedRight, originalBottomMargin - appliedBottom);
-        }
-        view.setLayoutParams(originalLayoutParams);
-    }
-
-    private void ensureAncestorsDoNotClip() {
+    private void ensureAncestorsExpandedAndUnclipped() {
         if (!clipStates.isEmpty()) return;
+
+        if (originalLayoutParams instanceof ViewGroup.MarginLayoutParams margins) {
+            margins.setMargins(0, 0, 0, 0);
+        }
+        originalLayoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT;
+        originalLayoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT;
+        view.setLayoutParams(originalLayoutParams);
+        view.setPadding(0, 0, 0, 0);
+
         View current = view.getParent() instanceof View parent ? parent : null;
         while (current != null) {
             if (current instanceof ViewGroup group) {
                 clipStates.add(new ClipState(group));
                 group.setClipChildren(false);
                 group.setClipToPadding(false);
+                group.setPadding(0, 0, 0, 0);
+                if (group.getLayoutParams() instanceof ViewGroup.MarginLayoutParams margins) {
+                    if (margins.topMargin != 0 || margins.bottomMargin != 0 || margins.leftMargin != 0 || margins.rightMargin != 0) {
+                        margins.setMargins(0, 0, 0, 0);
+                        group.setLayoutParams(margins);
+                    }
+                }
             }
             if (current == view.getRootView()) break;
             current = current.getParent() instanceof View parent ? parent : null;
@@ -140,16 +113,12 @@ final class FullScreenPlayerViewState {
     }
 
     void restore() {
-        if (appliedLeft + appliedTop + appliedRight + appliedBottom != 0) {
-            appliedLeft = 0;
-            appliedTop = 0;
-            appliedRight = 0;
-            appliedBottom = 0;
+        if (applied) {
+            applied = false;
             originalLayoutParams.width = originalWidth;
             originalLayoutParams.height = originalHeight;
             if (originalLayoutParams instanceof ViewGroup.MarginLayoutParams margins) {
-                margins.setMargins(originalLeftMargin, originalTopMargin,
-                        originalRightMargin, originalBottomMargin);
+                margins.setMargins(originalLeftMargin, originalTopMargin, originalRightMargin, originalBottomMargin);
             }
             view.setLayoutParams(originalLayoutParams);
         }
@@ -161,16 +130,25 @@ final class FullScreenPlayerViewState {
         private final ViewGroup view;
         private final boolean clipChildren;
         private final boolean clipToPadding;
+        private final int paddingLeft;
+        private final int paddingTop;
+        private final int paddingRight;
+        private final int paddingBottom;
 
         ClipState(ViewGroup view) {
             this.view = view;
             clipChildren = view.getClipChildren();
             clipToPadding = view.getClipToPadding();
+            paddingLeft = view.getPaddingLeft();
+            paddingTop = view.getPaddingTop();
+            paddingRight = view.getPaddingRight();
+            paddingBottom = view.getPaddingBottom();
         }
 
         void restore() {
             view.setClipChildren(clipChildren);
             view.setClipToPadding(clipToPadding);
+            view.setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom);
         }
     }
 }

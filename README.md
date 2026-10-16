@@ -28,10 +28,10 @@ All feature patches are selected and enabled by default. Inspection and playback
 
 Supported Twitch versions:
 
-| Version | Version code |
-| --- | --- |
-| 31.4.2 | 3104026 |
-| 31.3.0 | 3103006 |
+| Version | Version code | Download |
+|---------| --- | -- |
+| 31.5.2  | 3105026 | [Link](https://www.apkmirror.com/apk/twitch-interactive-inc/twitch/twitch-live-streaming-31-5-2-release/twitch-live-streaming-31-5-2-2-android-apk-download/download/?key=c948a81da345c22a2216145e3262910b6ac787d8) |
+| 31.4.2  | 3103006 | |
 
 Both versions have passed patching and DEX verification. Device testing uses ARM64 on Android 13. Initial checks for 31.4.2 cover settings, stream reloading, emotes and ad blocking; extended testing is ongoing. See [compatibility data](config/compatibility.json) for verification results and remaining checks.
 

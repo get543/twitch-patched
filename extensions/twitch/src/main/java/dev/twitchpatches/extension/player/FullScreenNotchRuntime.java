@@ -12,6 +12,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.ViewTreeObserver;
 import dev.twitchpatches.extension.settings.PatchSettings;
@@ -117,6 +118,15 @@ public final class FullScreenNotchRuntime implements ToggleSetting {
         Window window = activity.getWindow();
         if (window == null) return;
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && activity.isInPictureInPictureMode()) {
+            FullScreenNotchWindowState state = windowStates.remove(activity);
+            if (state != null) state.restore(window);
+            for (FullScreenPlayerViewState playerState : playerViews.values()) {
+                if (playerState.activity == activity) playerState.restore();
+            }
+            return;
+        }
+
         int orientation = activity.getResources().getConfiguration().orientation;
         boolean landscape = orientation == Configuration.ORIENTATION_LANDSCAPE;
         boolean hasPlayer = hasAttachedPlayerView(activity);
@@ -130,15 +140,32 @@ public final class FullScreenNotchRuntime implements ToggleSetting {
                 windowStates.put(activity, state);
             }
             state.apply(window);
+            stripTopBottomGaps(window.getDecorView(), 0);
         } else if (state != null) {
             state.restore(window);
             windowStates.remove(activity);
         }
     }
 
+    private static void stripTopBottomGaps(View view, int depth) {
+        if (view == null || depth > 3) return;
+        view.setPadding(0, 0, 0, 0);
+        if (view.getLayoutParams() instanceof ViewGroup.MarginLayoutParams margins) {
+            if (margins.topMargin > 0 || margins.bottomMargin > 0 || margins.leftMargin > 0 || margins.rightMargin > 0) {
+                margins.setMargins(0, 0, 0, 0);
+                view.setLayoutParams(margins);
+            }
+        }
+        if (view instanceof ViewGroup group) {
+            for (int i = 0; i < group.getChildCount(); i++) {
+                stripTopBottomGaps(group.getChildAt(i), depth + 1);
+            }
+        }
+    }
+
     private boolean isVideoActivity(Activity activity) {
         String name = activity.getClass().getName();
-        return name.contains("Player") || name.contains("Viewer") || name.contains("Stream") || name.contains("Landing");
+        return name.contains("Player") || name.contains("Viewer") || name.contains("Stream") || name.contains("Landing") || name.contains("Main");
     }
 
     private boolean hasAttachedPlayerView(Activity activity) {

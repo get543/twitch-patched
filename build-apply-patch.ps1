@@ -47,8 +47,9 @@ Write-Host "`nApplying patches on $($twitchApkFile.Name)..." -ForegroundColor Ye
 
 $patchNames = @(
     "Landscape edge-to-edge playback",
+    "Clip-style chat animation",
     "Auto-claim bonus channel points",
-    "BTTV and 7TV emotes",
+    "BTTV, FFZ and 7TV emotes",
     "Block client-requested ads",
     "Block stream ads",
     "Hide Turbo promotions",
@@ -65,6 +66,6 @@ if ($latestRun) {
     $patchedApk = Get-ChildItem -Path $latestRun.FullName -Filter "*patched*.apk" | Select-Object -First 1
     if ($patchedApk) {
         Copy-Item -Path $patchedApk.FullName -Destination "$projectRoot/twitch_patched.apk" -Force
-        Write-Host "`nPatched APK created successfully at .\twitch_patched.apk !" -ForegroundColor Green
+        Write-Host "`nPatched APK created successfully at .\twitch_patched.apk!" -ForegroundColor Green
     }
 }

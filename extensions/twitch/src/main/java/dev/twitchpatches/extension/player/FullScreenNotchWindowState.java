@@ -3,6 +3,7 @@ package dev.twitchpatches.extension.player;
 import android.annotation.TargetApi;
 import android.os.Build;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
@@ -14,9 +15,6 @@ final class FullScreenNotchWindowState {
     private final int statusBarColor;
     private final int navigationBarColor;
     private final boolean decorFitsSystemWindows;
-    private final boolean statusBarsVisible;
-    private final boolean navigationBarsVisible;
-    private final int systemBarsBehavior;
     private boolean applied;
 
     FullScreenNotchWindowState(Window window) {
@@ -28,18 +26,6 @@ final class FullScreenNotchWindowState {
         navigationBarColor = window.getNavigationBarColor();
         int layoutFlags = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
         decorFitsSystemWindows = (systemUiVisibility & layoutFlags) == 0;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            WindowInsets rootInsets = decorView.getRootWindowInsets();
-            statusBarsVisible = rootInsets == null || rootInsets.isVisible(WindowInsets.Type.statusBars());
-            navigationBarsVisible = rootInsets == null || rootInsets.isVisible(WindowInsets.Type.navigationBars());
-            WindowInsetsController controller = window.getInsetsController();
-            systemBarsBehavior = controller == null ? WindowInsetsController.BEHAVIOR_DEFAULT
-                    : controller.getSystemBarsBehavior();
-        } else {
-            statusBarsVisible = (systemUiVisibility & View.SYSTEM_UI_FLAG_FULLSCREEN) == 0;
-            navigationBarsVisible = (systemUiVisibility & View.SYSTEM_UI_FLAG_HIDE_NAVIGATION) == 0;
-            systemBarsBehavior = WindowInsetsController.BEHAVIOR_DEFAULT;
-        }
     }
 
     @TargetApi(28)
@@ -54,30 +40,53 @@ final class FullScreenNotchWindowState {
 
         window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN);
         window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+        window.clearFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+
+        View decorView = window.getDecorView();
+        decorView.setPadding(0, 0, 0, 0);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.setDecorFitsSystemWindows(false);
             WindowInsetsController controller = window.getInsetsController();
             if (controller != null) {
                 controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
-                controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                controller.hide(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
             }
         } else {
-            View decorView = window.getDecorView();
             int flags = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                     | View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_FULLSCREEN
                     | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
             decorView.setSystemUiVisibility(decorView.getSystemUiVisibility() | flags);
         }
 
-        View decorView = window.getDecorView();
-        decorView.setOnApplyWindowInsetsListener((v, insets) -> {
+        View.OnApplyWindowInsetsListener zeroInsetsListener = (v, insets) -> {
+            v.setPadding(0, 0, 0, 0);
+            if (v.getLayoutParams() instanceof ViewGroup.MarginLayoutParams margins) {
+                if (margins.topMargin > 0 || margins.bottomMargin > 0 || margins.leftMargin > 0 || margins.rightMargin > 0) {
+                    margins.setMargins(0, 0, 0, 0);
+                    v.setLayoutParams(margins);
+                }
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 return WindowInsets.CONSUMED;
             } else {
-                return insets.consumeDisplayCutout();
+                return insets.consumeSystemWindowInsets().consumeDisplayCutout();
             }
-        });
+        };
+
+        decorView.setOnApplyWindowInsetsListener(zeroInsetsListener);
+
+        View contentView = window.findViewById(android.R.id.content);
+        if (contentView != null) {
+            contentView.setPadding(0, 0, 0, 0);
+            if (contentView.getLayoutParams() instanceof ViewGroup.MarginLayoutParams margins) {
+                margins.setMargins(0, 0, 0, 0);
+                contentView.setLayoutParams(margins);
+            }
+            contentView.setOnApplyWindowInsetsListener(zeroInsetsListener);
+        }
 
         applied = true;
     }
@@ -97,12 +106,14 @@ final class FullScreenNotchWindowState {
         View decorView = window.getDecorView();
         decorView.setOnApplyWindowInsetsListener(null);
 
+        View contentView = window.findViewById(android.R.id.content);
+        if (contentView != null) contentView.setOnApplyWindowInsetsListener(null);
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.setDecorFitsSystemWindows(decorFitsSystemWindows);
             WindowInsetsController controller = window.getInsetsController();
             if (controller != null) {
-                controller.setSystemBarsBehavior(systemBarsBehavior);
-                int bars = WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars();
+                int bars = WindowInsets.Type.systemBars();
                 controller.show(bars);
             }
         } else {
