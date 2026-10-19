@@ -6,19 +6,19 @@ Independent patches for the official Twitch Android app, compatible with [Morphe
 
 Select each feature independently when patching. Included features appear under Twitch's **Settings > Patch settings**; omitted patches do not add settings.
 
-| Patch | Behavior |
-| --- | --- |
-| Block stream ads | Replaces detected live-stream ads with direct Twitch playback from alternate player contexts. Prefers matching video quality. No external stream proxy. |
-| Hide feed and display ads | Removes sponsored feed cards and display ads using Twitch's no-ad responses. |
-| Hide Turbo promotions | Hides Turbo entries, upsells and purchase buttons. |
-| Hide subscription discount banners | Hides subscription offers and promotional labels, while retaining normal subscription actions. |
-| Auto-claim bonus channel points | Claims available bonus rewards in live playback. |
-| BTTV and 7TV emotes | Renders global and channel emotes in chat with provider previews on tap. |
-| Landscape edge-to-edge playback | Hides system bars and extends landscape playback into display cutouts such as notches. |
-| Reload stream | Adds a reload button in live-player controls. Double-tap to reload. |
-| Block client-requested ads | Suppresses native ad requests. Restart Twitch after changing the setting. |
-| Playback diagnostics | Records playlist structure and playback frame counters. Disabled by default. |
-| Inspect Twitch APK | Reports package, version and DEX class count during patching. Does not change the app. |
+| Patch                              | Behavior                                                                                                                                                |
+|------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Block stream ads                   | Replaces detected live-stream ads with direct Twitch playback from alternate player contexts. Prefers matching video quality. No external stream proxy. |
+| Hide feed and display ads          | Removes sponsored feed cards and display ads using Twitch's no-ad responses.                                                                            |
+| Hide Turbo promotions              | Hides Turbo entries, upsells and purchase buttons.                                                                                                      |
+| Hide subscription discount banners | Hides subscription offers and promotional labels, while retaining normal subscription actions.                                                          |
+| Auto-claim bonus channel points    | Claims available bonus rewards in live playback.                                                                                                        |
+| BTTV and 7TV emotes                | Renders global and channel emotes in chat with provider previews on tap.                                                                                |
+| Landscape edge-to-edge playback    | Hides system bars and extends landscape playback into display cutouts such as notches.                                                                  |
+| Reload stream                      | Adds a reload button in live-player controls. Double-tap to reload.                                                                                     |
+| Block client-requested ads         | Suppresses native ad requests. Restart Twitch after changing the setting.                                                                               |
+| Playback diagnostics               | Records playlist structure and playback frame counters. Disabled by default.                                                                            |
+| Inspect Twitch APK                 | Reports package, version and DEX class count during patching. Does not change the app.                                                                  |
 
 Push notification registration is included automatically with feature patches.
 
@@ -28,10 +28,10 @@ All feature patches are selected and enabled by default. Inspection and playback
 
 Supported Twitch versions:
 
-| Version | Version code | Download |
-|---------| --- | -- |
-| 31.5.2  | 3105026 | [Link](https://www.apkmirror.com/apk/twitch-interactive-inc/twitch/twitch-live-streaming-31-5-2-release/twitch-live-streaming-31-5-2-2-android-apk-download/download/?key=c948a81da345c22a2216145e3262910b6ac787d8) |
-| 31.4.2  | 3103006 | |
+| Version | Version code | Download                                                                                                                                                                                                            |
+|---------|--------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 31.5.2  | 3105026      | [Link](https://www.apkmirror.com/apk/twitch-interactive-inc/twitch/twitch-live-streaming-31-5-2-release/twitch-live-streaming-31-5-2-2-android-apk-download/download/?key=c948a81da345c22a2216145e3262910b6ac787d8) |
+| 31.4.2  | 3103006      |                                                                                                                                                                                                                     |
 
 Both versions have passed patching and DEX verification. Device testing uses ARM64 on Android 13. Initial checks for 31.4.2 cover settings, stream reloading, emotes and ad blocking; extended testing is ongoing. See [compatibility data](config/compatibility.json) for verification results and remaining checks.
 

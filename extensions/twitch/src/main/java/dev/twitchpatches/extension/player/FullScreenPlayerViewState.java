@@ -2,8 +2,10 @@ package dev.twitchpatches.extension.player;
 
 import android.app.Activity;
 import android.os.Build;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -68,7 +70,7 @@ final class FullScreenPlayerViewState {
     void update() {
         if (activity == null) activity = runtime.findActivity(view);
 
-        if (activity != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && activity.isInPictureInPictureMode()) {
+        if (activity != null && activity.isInPictureInPictureMode()) {
             restore();
             return;
         }
@@ -78,37 +80,72 @@ final class FullScreenPlayerViewState {
             return;
         }
 
-        ensureAncestorsExpandedAndUnclipped();
+        expandAndCenterViewAndAncestors(view);
         applied = true;
     }
 
-    private void ensureAncestorsExpandedAndUnclipped() {
-        if (!clipStates.isEmpty()) return;
+    private void expandAndCenterViewAndAncestors(View playerView) {
+        expandAndCenterSingleView(playerView);
+        expandChildren(playerView, 0);
 
-        if (originalLayoutParams instanceof ViewGroup.MarginLayoutParams margins) {
-            margins.setMargins(0, 0, 0, 0);
-        }
-        originalLayoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT;
-        originalLayoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT;
-        view.setLayoutParams(originalLayoutParams);
-        view.setPadding(0, 0, 0, 0);
-
-        View current = view.getParent() instanceof View parent ? parent : null;
+        View current = playerView.getParent() instanceof View parent ? parent : null;
         while (current != null) {
             if (current instanceof ViewGroup group) {
-                clipStates.add(new ClipState(group));
+                boolean exists = false;
+                for (ClipState state : clipStates) {
+                    if (state.view == group) { exists = true; break; }
+                }
+                if (!exists) clipStates.add(new ClipState(group));
                 group.setClipChildren(false);
                 group.setClipToPadding(false);
                 group.setPadding(0, 0, 0, 0);
-                if (group.getLayoutParams() instanceof ViewGroup.MarginLayoutParams margins) {
-                    if (margins.topMargin != 0 || margins.bottomMargin != 0 || margins.leftMargin != 0 || margins.rightMargin != 0) {
-                        margins.setMargins(0, 0, 0, 0);
-                        group.setLayoutParams(margins);
-                    }
+                expandAndCenterSingleView(group);
+            }
+            if (current == playerView.getRootView()) break;
+            current = current.getParent() instanceof View parent ? parent : null;
+        }
+    }
+
+    private static void expandChildren(View v, int depth) {
+        if (v == null || depth > 4) return;
+        if (v instanceof ViewGroup group) {
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View child = group.getChildAt(i);
+                expandAndCenterSingleView(child);
+                expandChildren(child, depth + 1);
+            }
+        }
+    }
+
+    private static void expandAndCenterSingleView(View v) {
+        if (v == null) return;
+        v.setPadding(0, 0, 0, 0);
+        ViewGroup.LayoutParams params = v.getLayoutParams();
+        if (params != null) {
+            boolean changed = false;
+            if (params.width != ViewGroup.LayoutParams.MATCH_PARENT) {
+                params.width = ViewGroup.LayoutParams.MATCH_PARENT;
+                changed = true;
+            }
+            if (params.height != ViewGroup.LayoutParams.MATCH_PARENT) {
+                params.height = ViewGroup.LayoutParams.MATCH_PARENT;
+                changed = true;
+            }
+            if (params instanceof ViewGroup.MarginLayoutParams margins) {
+                if (margins.topMargin != 0 || margins.bottomMargin != 0 || margins.leftMargin != 0 || margins.rightMargin != 0) {
+                    margins.setMargins(0, 0, 0, 0);
+                    changed = true;
                 }
             }
-            if (current == view.getRootView()) break;
-            current = current.getParent() instanceof View parent ? parent : null;
+            if (params instanceof FrameLayout.LayoutParams frameParams) {
+                if (frameParams.gravity != Gravity.CENTER) {
+                    frameParams.gravity = Gravity.CENTER;
+                    changed = true;
+                }
+            }
+            if (changed) {
+                v.setLayoutParams(params);
+            }
         }
     }
 
@@ -127,7 +164,7 @@ final class FullScreenPlayerViewState {
     }
 
     private static final class ClipState {
-        private final ViewGroup view;
+        final ViewGroup view;
         private final boolean clipChildren;
         private final boolean clipToPadding;
         private final int paddingLeft;

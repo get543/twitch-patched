@@ -2,12 +2,14 @@ package dev.twitchpatches.extension.player;
 
 import android.annotation.TargetApi;
 import android.os.Build;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
+import android.widget.FrameLayout;
 
 final class FullScreenNotchWindowState {
     private final int cutoutMode;
@@ -69,6 +71,12 @@ final class FullScreenNotchWindowState {
                     v.setLayoutParams(margins);
                 }
             }
+            if (v.getLayoutParams() instanceof FrameLayout.LayoutParams frameParams) {
+                if (frameParams.gravity != Gravity.CENTER) {
+                    frameParams.gravity = Gravity.CENTER;
+                    v.setLayoutParams(frameParams);
+                }
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 return WindowInsets.CONSUMED;
             } else {
@@ -84,6 +92,10 @@ final class FullScreenNotchWindowState {
             if (contentView.getLayoutParams() instanceof ViewGroup.MarginLayoutParams margins) {
                 margins.setMargins(0, 0, 0, 0);
                 contentView.setLayoutParams(margins);
+            }
+            if (contentView.getLayoutParams() instanceof FrameLayout.LayoutParams frameParams) {
+                frameParams.gravity = Gravity.CENTER;
+                contentView.setLayoutParams(frameParams);
             }
             contentView.setOnApplyWindowInsetsListener(zeroInsetsListener);
         }
