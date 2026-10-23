@@ -112,8 +112,12 @@ public final class FullScreenNotchRuntime implements ToggleSetting {
 
     private boolean shouldApplyNotch(Activity activity) {
         int orientation = activity.getResources().getConfiguration().orientation;
-        boolean landscape = orientation == Configuration.ORIENTATION_LANDSCAPE;
-        return enabled && landscape && (hasAttachedPlayerView(activity) || isVideoActivity(activity));
+        boolean playerActive = hasAttachedPlayerView(activity) || isVideoActivity(activity);
+        return shouldApply(enabled, orientation, playerActive);
+    }
+
+    static boolean shouldApply(boolean enabled, int orientation, boolean playerActive) {
+        return enabled && orientation == Configuration.ORIENTATION_LANDSCAPE && playerActive;
     }
 
     private void applyNotchState(Activity activity, Window window, FullScreenNotchWindowState currentState) {
