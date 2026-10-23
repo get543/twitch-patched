@@ -10,6 +10,21 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NativeFeedThemeTest {
+    @Test fun derivesTheRestorationActivityFromTheNativeFragment() {
+        for (activity in listOf("Landroidx/fragment/app/n;", "Landroidx/fragment/app/r;")) {
+            val stop = ImmutableMethod("Lsynthetic/Fragment;", "onStop", emptyList(), "V", AccessFlags.PUBLIC.value,
+                null, null, MutableMethodImplementation(2)).toMutable().apply {
+                addInstructionsWithLabels(0, """
+                    invoke-virtual {p0}, Lsynthetic/Fragment;->requireActivity()$activity
+                    move-result-object v0
+                    invoke-virtual {p0, v0}, Lsynthetic/ThemeHelper;->restore($activity)V
+                    return-void
+                """)
+            }
+            assertEquals(listOf(activity), nativeFeedRestoration(stop).parameterTypes.map { it.toString() })
+        }
+    }
+
     private fun provider(owner: String, override: Boolean = true) = ImmutableMethod("Lsynthetic/Provider;", "get",
         emptyList(), "Ljava/lang/Object;", AccessFlags.PUBLIC.value, null, null,
         MutableMethodImplementation(4)).toMutable().apply {

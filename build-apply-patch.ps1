@@ -1,3 +1,6 @@
+#! Change this version number to match the Twitch APK/APKM you want to patch. The script will look for a file named twitch_<version>.apkm or twitch.apk in the root directory.
+$twitchApkVersion = "31.6.0"
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -30,13 +33,13 @@ Copy-Item -Path $sourceMpp -Destination "$projectRoot/patches.mpp" -Force
 Write-Host "Patch bundle copied to .\patches.mpp" -ForegroundColor Green
 
 # 4. Check for twitch input APK/APKM
-$twitchApkFile = Get-ChildItem -Path $projectRoot -Filter "twitch.apkm" | Select-Object -First 1
+$twitchApkFile = Get-ChildItem -Path $projectRoot -Filter "twitch_$twitchApkVersion.apkm" | Select-Object -First 1
 if (-not $twitchApkFile) {
     $twitchApkFile = Get-ChildItem -Path $projectRoot -Filter "twitch.apk" | Select-Object -First 1
 }
 
 if (-not $twitchApkFile) {
-    Write-Host "`nNo twitch input file (e.g. twitch.apkm) found in root directory." -ForegroundColor Yellow
+    Write-Host "`nNo twitch input file the name of twitch_$twitchApkVersion.apkm found in root directory." -ForegroundColor Yellow
     Write-Host "Patch bundle built successfully at .\patches.mpp!" -ForegroundColor Green
     exit 0
 }

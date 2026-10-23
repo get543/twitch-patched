@@ -29,14 +29,21 @@ internal fun feedContextThemeIndices(method: Method, factory: String): List<Int>
     }
 }
 
+internal fun nativeFeedRestoration(stop: Method): MethodReference {
+    val activity = stop.references().filterIsInstance<MethodReference>().filter {
+        it.name == "requireActivity" && it.parameterTypes.isEmpty() && it.returnType.startsWith("Landroidx/fragment/app/")
+    }.uniqueHook("native feed host activity").returnType
+    return stop.references().filterIsInstance<MethodReference>().filter {
+        it.parameterTypes == listOf(activity) && it.returnType == "V" && !it.definingClass.startsWith("Landroid")
+    }.uniqueHook("native preferred-theme restoration")
+}
+
 internal fun BytecodePatchContext.restoreNativeFeedTheme() {
     val home = classDefBy("Ltv/twitch/android/feature/discovery/feed/tab/DiscoveryFeedHomeFragment;")
     val stop = home.methods.filter { it.name == "onStop" && it.isInstance(emptyList(), "V") }
         .uniqueHook("native feed theme lifecycle")
-    val restoreCall = stop.references().filterIsInstance<MethodReference>().filter {
-        it.parameterTypes == listOf("Landroidx/fragment/app/n;") && it.returnType == "V" &&
-            !it.definingClass.startsWith("Landroid")
-    }.uniqueHook("native preferred-theme restoration")
+    val restoreCall = nativeFeedRestoration(stop)
+    val fragmentActivity = restoreCall.parameterTypes.single().toString()
     val helper = mutableClassDefBy(restoreCall.definingClass)
     val restore = helper.methods.single { it.reference == restoreCall.toString() }
     val activityType = "Ltv/twitch/android/feature/viewer/landing/ViewerLandingActivity;"
@@ -74,13 +81,13 @@ internal fun BytecodePatchContext.restoreNativeFeedTheme() {
     helper.methods.add(getter)
     forced.forEach { original ->
         val parameters = original.parameterTypes.map { it.toString() }
-        require(parameters == listOf(helper.type) || parameters == listOf(helper.type, "Landroidx/fragment/app/n;"))
+        require(parameters == listOf(helper.type) || parameters == listOf(helper.type, fragmentActivity))
         val replacement = ImmutableMethod(helper.type, original.name, original.parameters, "V", original.accessFlags,
             original.annotations, original.hiddenApiRestrictions, MutableMethodImplementation(parameters.size + 1)).toMutable()
         val body = if (parameters.size == 2) "invoke-virtual {p0, p1}, $restoreCall" else """
             iget-object v0, p0, $field
             if-eqz v0, :done
-            check-cast v0, Landroidx/fragment/app/n;
+            check-cast v0, $fragmentActivity
             invoke-virtual {p0, v0}, $restoreCall
         """
         replacement.addInstructionsWithLabels(0, "$body\n:done\nreturn-void")

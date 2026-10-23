@@ -9,12 +9,8 @@ import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.Window;
-import android.view.ViewTreeObserver;
 import dev.twitchpatches.extension.settings.PatchSettings;
 import dev.twitchpatches.extension.settings.SettingSection;
 import dev.twitchpatches.extension.settings.ToggleSetting;
@@ -27,9 +23,7 @@ import java.util.WeakHashMap;
 public final class FullScreenNotchRuntime implements ToggleSetting {
     private static volatile FullScreenNotchRuntime instance;
     private final SharedPreferences preferences;
-    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Map<Activity, FullScreenNotchWindowState> windowStates = new IdentityHashMap<>();
-    private final Map<Activity, ViewTreeObserver.OnGlobalLayoutListener> layoutListeners = new IdentityHashMap<>();
     private final Map<Activity, Boolean> activities = new IdentityHashMap<>();
     private final Map<View, FullScreenPlayerViewState> playerViews = new IdentityHashMap<>();
     private final Map<View, WeakReference<FullScreenPlayerViewState>> playerViewRegistry = new WeakHashMap<>();
@@ -44,11 +38,9 @@ public final class FullScreenNotchRuntime implements ToggleSetting {
         if (instance != null) return;
         instance = new FullScreenNotchRuntime(application);
         application.registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
-            @Override public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-                instance.track(activity);
-            }
-            @Override public void onActivityStarted(Activity activity) { instance.scheduleUpdate(activity); }
-            @Override public void onActivityResumed(Activity activity) { instance.scheduleUpdate(activity); }
+            @Override public void onActivityCreated(Activity activity, Bundle savedInstanceState) { instance.track(activity); }
+            @Override public void onActivityStarted(Activity activity) { instance.update(activity); }
+            @Override public void onActivityResumed(Activity activity) { instance.update(activity); }
             @Override public void onActivityPaused(Activity activity) {}
             @Override public void onActivityStopped(Activity activity) {}
             @Override public void onActivitySaveInstanceState(Activity activity, Bundle outState) {}
@@ -59,46 +51,31 @@ public final class FullScreenNotchRuntime implements ToggleSetting {
 
     private void track(Activity activity) {
         activities.put(activity, Boolean.TRUE);
-        View decorView = activity.getWindow().getDecorView();
-        ViewTreeObserver.OnGlobalLayoutListener listener = () -> update(activity);
-        layoutListeners.put(activity, listener);
-        decorView.getViewTreeObserver().addOnGlobalLayoutListener(listener);
+        registerOrientationCallback(activity);
+        update(activity);
+    }
 
-        decorView.setOnSystemUiVisibilityChangeListener(visibility -> {
-            int orientation = activity.getResources().getConfiguration().orientation;
-            if (enabled && orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                scheduleUpdate(activity);
-            }
-        });
-
+    private void registerOrientationCallback(Activity activity) {
         try {
             activity.registerComponentCallbacks(new ComponentCallbacks2() {
-                @Override public void onConfigurationChanged(Configuration newConfig) {
-                    scheduleUpdate(activity);
-                }
+                @Override public void onConfigurationChanged(Configuration newConfig) { update(activity); }
                 @Override public void onLowMemory() {}
                 @Override public void onTrimMemory(int level) {}
             });
         } catch (Exception ignored) {}
-
-        scheduleUpdate(activity);
     }
 
     private void untrack(Activity activity) {
-        ViewTreeObserver.OnGlobalLayoutListener listener = layoutListeners.remove(activity);
-        View decorView = activity.getWindow().getDecorView();
-        if (listener != null) {
-            ViewTreeObserver observer = decorView.getViewTreeObserver();
-            if (observer.isAlive()) observer.removeOnGlobalLayoutListener(listener);
-        }
         activities.remove(activity);
         FullScreenNotchWindowState state = windowStates.remove(activity);
         if (state != null) state.restore(activity.getWindow());
-        for (WeakReference<FullScreenPlayerViewState> reference :
-                new ArrayList<>(playerViewRegistry.values())) {
+        disposeActivityPlayerViews(activity);
+    }
+
+    private void disposeActivityPlayerViews(Activity activity) {
+        for (WeakReference<FullScreenPlayerViewState> reference : new ArrayList<>(playerViewRegistry.values())) {
             FullScreenPlayerViewState playerState = reference.get();
-            if (playerState == null) continue;
-            if (playerState.activity == activity) {
+            if (playerState != null && playerState.activity == activity) {
                 playerViews.remove(playerState.view);
                 playerViewRegistry.remove(playerState.view);
                 playerState.dispose();
@@ -106,60 +83,56 @@ public final class FullScreenNotchRuntime implements ToggleSetting {
         }
     }
 
-    void scheduleUpdate(Activity activity) {
-        update(activity);
-        mainHandler.post(() -> update(activity));
-        mainHandler.postDelayed(() -> update(activity), 100);
-        mainHandler.postDelayed(() -> update(activity), 300);
-        mainHandler.postDelayed(() -> update(activity), 600);
-    }
-
     private void update(Activity activity) {
         Window window = activity.getWindow();
         if (window == null) return;
+        if (handlePipMode(activity, window)) return;
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && activity.isInPictureInPictureMode()) {
+        boolean shouldApply = shouldApplyNotch(activity);
+        FullScreenNotchWindowState state = windowStates.get(activity);
+
+        if (shouldApply && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            applyNotchState(activity, window, state);
+        } else if (state != null) {
+            restoreNotchState(activity, window, state);
+        }
+    }
+
+    private boolean handlePipMode(Activity activity, Window window) {
+        if (activity.isInPictureInPictureMode()) {
             FullScreenNotchWindowState state = windowStates.remove(activity);
             if (state != null) state.restore(window);
             for (FullScreenPlayerViewState playerState : playerViews.values()) {
                 if (playerState.activity == activity) playerState.restore();
             }
-            return;
+            return true;
         }
+        return false;
+    }
 
+    private boolean shouldApplyNotch(Activity activity) {
         int orientation = activity.getResources().getConfiguration().orientation;
         boolean landscape = orientation == Configuration.ORIENTATION_LANDSCAPE;
-        boolean hasPlayer = hasAttachedPlayerView(activity);
-        boolean shouldApply = enabled && landscape && (hasPlayer || isVideoActivity(activity));
+        return enabled && landscape && (hasAttachedPlayerView(activity) || isVideoActivity(activity));
+    }
 
-        FullScreenNotchWindowState state = windowStates.get(activity);
-
-        if (shouldApply && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            if (state == null) {
-                state = new FullScreenNotchWindowState(window);
-                windowStates.put(activity, state);
-            }
-            state.apply(window);
-            stripTopBottomGaps(window.getDecorView(), 0);
-        } else if (state != null) {
-            state.restore(window);
-            windowStates.remove(activity);
+    private void applyNotchState(Activity activity, Window window, FullScreenNotchWindowState currentState) {
+        FullScreenNotchWindowState state = currentState;
+        if (state == null) {
+            state = new FullScreenNotchWindowState(window);
+            windowStates.put(activity, state);
+        }
+        state.apply(window);
+        for (FullScreenPlayerViewState playerState : playerViews.values()) {
+            if (playerState.activity == activity) playerState.update();
         }
     }
 
-    private static void stripTopBottomGaps(View view, int depth) {
-        if (view == null || depth > 3) return;
-        view.setPadding(0, 0, 0, 0);
-        if (view.getLayoutParams() instanceof ViewGroup.MarginLayoutParams margins) {
-            if (margins.topMargin > 0 || margins.bottomMargin > 0 || margins.leftMargin > 0 || margins.rightMargin > 0) {
-                margins.setMargins(0, 0, 0, 0);
-                view.setLayoutParams(margins);
-            }
-        }
-        if (view instanceof ViewGroup group) {
-            for (int i = 0; i < group.getChildCount(); i++) {
-                stripTopBottomGaps(group.getChildAt(i), depth + 1);
-            }
+    private void restoreNotchState(Activity activity, Window window, FullScreenNotchWindowState state) {
+        state.restore(window);
+        windowStates.remove(activity);
+        for (FullScreenPlayerViewState playerState : playerViews.values()) {
+            if (playerState.activity == activity) playerState.restore();
         }
     }
 
@@ -198,7 +171,7 @@ public final class FullScreenNotchRuntime implements ToggleSetting {
         state.activity = findActivity(state.view);
         if (state.activity != null) {
             playerViews.put(state.view, state);
-            scheduleUpdate(state.activity);
+            update(state.activity);
         }
         state.update();
     }
@@ -207,13 +180,11 @@ public final class FullScreenNotchRuntime implements ToggleSetting {
         Activity activity = state.activity;
         playerViews.remove(state.view);
         state.restore();
-        if (activity != null) scheduleUpdate(activity);
+        if (activity != null) update(activity);
     }
 
     boolean shouldExtendPlayer(View playerView) {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
-                playerView.isShown() &&
-                enabled &&
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && playerView.isShown() && enabled &&
                 playerView.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
     }
 
@@ -242,9 +213,7 @@ public final class FullScreenNotchRuntime implements ToggleSetting {
     @Override public void setEnabled(boolean value) {
         enabled = value;
         preferences.edit().putBoolean("enabled", value).apply();
-        for (Activity activity : activities.keySet().toArray(new Activity[0])) scheduleUpdate(activity);
-        for (FullScreenPlayerViewState state : playerViews.values().toArray(new FullScreenPlayerViewState[0])) {
-            state.update();
-        }
+        for (Activity activity : activities.keySet().toArray(new Activity[0])) update(activity);
+        for (FullScreenPlayerViewState state : playerViews.values().toArray(new FullScreenPlayerViewState[0])) state.update();
     }
 }

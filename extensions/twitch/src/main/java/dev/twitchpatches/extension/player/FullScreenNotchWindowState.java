@@ -1,6 +1,5 @@
 package dev.twitchpatches.extension.player;
 
-import android.annotation.TargetApi;
 import android.os.Build;
 import android.view.Gravity;
 import android.view.View;
@@ -19,9 +18,10 @@ final class FullScreenNotchWindowState {
     private final boolean decorFitsSystemWindows;
     private boolean applied;
 
+    @SuppressWarnings("deprecation")
     FullScreenNotchWindowState(Window window) {
         WindowManager.LayoutParams attributes = window.getAttributes();
-        cutoutMode = attributes.layoutInDisplayCutoutMode;
+        cutoutMode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P ? attributes.layoutInDisplayCutoutMode : 0;
         View decorView = window.getDecorView();
         systemUiVisibility = decorView.getSystemUiVisibility();
         statusBarColor = window.getStatusBarColor();
@@ -30,22 +30,36 @@ final class FullScreenNotchWindowState {
         decorFitsSystemWindows = (systemUiVisibility & layoutFlags) == 0;
     }
 
-    @TargetApi(28)
-    @SuppressWarnings("deprecation")
     void apply(Window window) {
         if (applied) return;
-        WindowManager.LayoutParams attributes = window.getAttributes();
-        attributes.layoutInDisplayCutoutMode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-                ? WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
-                : WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
-        window.setAttributes(attributes);
+        configureCutoutMode(window);
+        configureWindowFlags(window);
+        hideSystemBars(window);
+        consumeInsets(window);
+        applied = true;
+    }
 
+    private static void configureCutoutMode(Window window) {
+        WindowManager.LayoutParams attributes = window.getAttributes();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
+        window.setAttributes(attributes);
+    }
+
+    @SuppressWarnings("deprecation")
+    private static void configureWindowFlags(Window window) {
         window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN);
         window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
         window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
         window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
         window.clearFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+    }
 
+    @SuppressWarnings("deprecation")
+    private static void hideSystemBars(Window window) {
         View decorView = window.getDecorView();
         decorView.setPadding(0, 0, 0, 0);
 
@@ -62,59 +76,71 @@ final class FullScreenNotchWindowState {
                     | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
             decorView.setSystemUiVisibility(decorView.getSystemUiVisibility() | flags);
         }
+    }
 
-        View.OnApplyWindowInsetsListener zeroInsetsListener = (v, insets) -> {
+    @SuppressWarnings("deprecation")
+    private static void consumeInsets(Window window) {
+        View.OnApplyWindowInsetsListener listener = (v, insets) -> {
             v.setPadding(0, 0, 0, 0);
-            if (v.getLayoutParams() instanceof ViewGroup.MarginLayoutParams margins) {
-                if (margins.topMargin > 0 || margins.bottomMargin > 0 || margins.leftMargin > 0 || margins.rightMargin > 0) {
-                    margins.setMargins(0, 0, 0, 0);
-                    v.setLayoutParams(margins);
-                }
-            }
-            if (v.getLayoutParams() instanceof FrameLayout.LayoutParams frameParams) {
-                if (frameParams.gravity != Gravity.CENTER) {
-                    frameParams.gravity = Gravity.CENTER;
-                    v.setLayoutParams(frameParams);
-                }
-            }
+            resetLayoutParams(v);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 return WindowInsets.CONSUMED;
-            } else {
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 return insets.consumeSystemWindowInsets().consumeDisplayCutout();
+            } else {
+                return insets.consumeSystemWindowInsets();
             }
         };
 
-        decorView.setOnApplyWindowInsetsListener(zeroInsetsListener);
-
+        window.getDecorView().setOnApplyWindowInsetsListener(listener);
         View contentView = window.findViewById(android.R.id.content);
         if (contentView != null) {
             contentView.setPadding(0, 0, 0, 0);
-            if (contentView.getLayoutParams() instanceof ViewGroup.MarginLayoutParams margins) {
-                margins.setMargins(0, 0, 0, 0);
-                contentView.setLayoutParams(margins);
-            }
-            if (contentView.getLayoutParams() instanceof FrameLayout.LayoutParams frameParams) {
-                frameParams.gravity = Gravity.CENTER;
-                contentView.setLayoutParams(frameParams);
-            }
-            contentView.setOnApplyWindowInsetsListener(zeroInsetsListener);
+            resetLayoutParams(contentView);
+            contentView.setOnApplyWindowInsetsListener(listener);
         }
+    }
 
-        applied = true;
+    private static void resetLayoutParams(View view) {
+        ViewGroup.LayoutParams params = view.getLayoutParams();
+        if (params == null) return;
+
+        // Force the container to fill the entire screen space vertically and horizontally
+        params.width = ViewGroup.LayoutParams.MATCH_PARENT;
+        params.height = ViewGroup.LayoutParams.MATCH_PARENT;
+
+        if (params instanceof ViewGroup.MarginLayoutParams margins) {
+            margins.setMargins(0, 0, 0, 0);
+        }
+        if (params instanceof FrameLayout.LayoutParams frameParams) {
+            // FILL ensures the content stretches to the edges instead of floating in the center
+            frameParams.gravity = Gravity.FILL;
+        }
     }
 
     @SuppressWarnings("deprecation")
     void restore(Window window) {
         if (!applied) return;
-        WindowManager.LayoutParams attributes = window.getAttributes();
-        if (attributes.layoutInDisplayCutoutMode != cutoutMode) {
-            attributes.layoutInDisplayCutoutMode = cutoutMode;
-            window.setAttributes(attributes);
-        }
+        restoreCutoutMode(window);
         window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
         window.setStatusBarColor(statusBarColor);
         window.setNavigationBarColor(navigationBarColor);
+        showSystemBars(window);
+        applied = false;
+    }
 
+    private void restoreCutoutMode(Window window) {
+        WindowManager.LayoutParams attributes = window.getAttributes();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            if (attributes.layoutInDisplayCutoutMode != cutoutMode) {
+                attributes.layoutInDisplayCutoutMode = cutoutMode;
+                window.setAttributes(attributes);
+            }
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void showSystemBars(Window window) {
         View decorView = window.getDecorView();
         decorView.setOnApplyWindowInsetsListener(null);
 
@@ -125,12 +151,10 @@ final class FullScreenNotchWindowState {
             window.setDecorFitsSystemWindows(decorFitsSystemWindows);
             WindowInsetsController controller = window.getInsetsController();
             if (controller != null) {
-                int bars = WindowInsets.Type.systemBars();
-                controller.show(bars);
+                controller.show(WindowInsets.Type.systemBars());
             }
         } else {
             decorView.setSystemUiVisibility(systemUiVisibility);
         }
-        applied = false;
     }
 }

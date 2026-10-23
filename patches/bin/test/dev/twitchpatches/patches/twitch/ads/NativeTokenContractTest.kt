@@ -12,6 +12,24 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class NativeTokenContractTest {
+    private fun observerMethod(name: String, parameter: String) = ImmutableMethod("Lsynthetic/Observer;", name,
+        listOf(ImmutableMethodParameter(parameter, null, null)), "V", AccessFlags.PUBLIC.value or AccessFlags.ABSTRACT.value,
+        null, null, null)
+
+    @Test fun observerCallbacksResolveAfterIndependentMethodRenaming() {
+        val callbacks = resolveTokenObserver(listOf(observerMethod("success", "Ljava/lang/Object;"),
+            observerMethod("failure", "Ljava/lang/Throwable;"), observerMethod("cancel", "Lsynthetic/Disposable;")))
+        assertEquals("success", callbacks.success.name)
+        assertEquals("failure", callbacks.error.name)
+        assertEquals("cancel", callbacks.subscribed.name)
+    }
+
+    @Test(expected = PatchException::class) fun ambiguousObserverErrorsAreRejected() {
+        resolveTokenObserver(listOf(observerMethod("success", "Ljava/lang/Object;"),
+            observerMethod("failure", "Ljava/lang/Throwable;"), observerMethod("other", "Ljava/lang/Throwable;"),
+            observerMethod("cancel", "Lsynthetic/Disposable;")))
+    }
+
     private fun method(body: String) = ImmutableMethod("Lsynthetic/Token;", "request",
         listOf(ImmutableMethodParameter("J", null, null), ImmutableMethodParameter("Z", null, null)), "V",
         AccessFlags.PUBLIC.value, null, null, MutableMethodImplementation(6)).toMutable().apply {

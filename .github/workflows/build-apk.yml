@@ -30,14 +30,9 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-
-      - name: Install Node dependencies
-        run: npm ci
+      - name: Check source hygiene
+        shell: pwsh
+        run: ./scripts/check-source.ps1
 
       - name: Ensure Android SDK Platform 36
         run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"'
@@ -50,7 +45,11 @@ jobs:
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./scripts/build.ps1
+        run: |
+          ./gradlew clean :patches:buildAndroid :patches:generatePatchesList --console=plain --no-daemon
+          if ($LASTEXITCODE -ne 0) {
+              throw "Gradle patch bundle build failed with exit code $LASTEXITCODE."
+          }
 
       - name: Obtain Twitch APK / APKM
         shell: pwsh
@@ -58,6 +57,7 @@ jobs:
           INPUT_URL: ${{ inputs.apk_url }}
           SECRET_URL: ${{ secrets.TWITCH_APK_URL }}
         run: |
+          $ErrorActionPreference = 'Stop'
           $url = $env:INPUT_URL
           if (-not $url) { $url = $env:SECRET_URL }
           if ($url) {
@@ -68,20 +68,20 @@ jobs:
           } elseif (Test-Path "twitch.apk") {
               Write-Host "Using twitch.apk in repository root."
           } else {
-              Write-Host "No Twitch APK URL provided and no twitch.apkm found."
+              Write-Host "No Twitch APK URL provided and no twitch.apkm or twitch.apk found."
               Write-Host "Skipping APK patching step. (.mpp bundle was built successfully)"
-              exit 0
           }
 
       - name: Patch APK with Morphe
         if: hashFiles('twitch.apkm', 'twitch.apk') != ''
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           $patchNames = @(
-              "Fullscreen notch support",
+              "Landscape edge-to-edge playback",
               "Clip-style chat animation",
               "Auto-claim bonus channel points",
-              "BTTV and 7TV emotes",
+              "BTTV, FFZ and 7TV emotes",
               "Block client-requested ads",
               "Block stream ads",
               "Hide Turbo promotions",
@@ -91,15 +91,20 @@ jobs:
           )
           $inputApk = if (Test-Path "twitch.apkm") { "twitch.apkm" } else { "twitch.apk" }
           ./scripts/patch.ps1 -InputApk $inputApk -Patch $patchNames
+          if ($LASTEXITCODE -ne 0) {
+              throw "Morphe patching failed with exit code $LASTEXITCODE."
+          }
 
           $latestRun = Get-ChildItem -Path ".local/runs" -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-          if ($latestRun) {
-              $patched = Get-ChildItem -Path $latestRun.FullName -Filter "*patched*.apk" | Select-Object -First 1
-              if ($patched) {
-                  Copy-Item -Path $patched.FullName -Destination "twitch_patched.apk" -Force
-                  Write-Host "Successfully generated twitch_patched.apk"
-              }
+          if (-not $latestRun) {
+              throw "Morphe did not create a run directory under .local/runs."
           }
+          $patched = Get-ChildItem -Path $latestRun.FullName -Filter "*patched*.apk" | Select-Object -First 1
+          if (-not $patched) {
+              throw "Morphe did not produce a patched APK in $($latestRun.FullName)."
+          }
+          Copy-Item -Path $patched.FullName -Destination "twitch_patched.apk" -Force
+          Write-Host "Successfully generated twitch_patched.apk"
 
       - name: Upload Patched APK Artifact
         if: hashFiles('twitch_patched.apk') != ''

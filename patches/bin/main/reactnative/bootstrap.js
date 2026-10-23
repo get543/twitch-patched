@@ -6,12 +6,13 @@
     var targets = Object.create(null);
     var define;
     var runtime = {
-        target: function (id, name, adapter, memo, registration) {
+        target: function (id, name, adapter, memo, registration, decorator) {
             var entries = targets[id] || (targets[id] = []);
-            if (entries.some(function (entry) { return entry.name === name; }))
+            if (!decorator && entries.some(function (entry) { return entry.name === name && !entry.decorator; }))
                 throw new Error('Duplicate Twitch patch export');
-            entries.push({name: name, adapter: adapter, memo: memo === true, registration: registration});
+            entries.push({name: name, adapter: adapter, memo: memo === true, registration: registration, decorator: decorator === true});
         },
+        decorate: function (id, name, adapter) { runtime.target(id, name, adapter, false, undefined, true); },
         enabled: function (index) { return policies[index] === true; },
         subscribe: function (listener) {
             listeners.add(listener);
