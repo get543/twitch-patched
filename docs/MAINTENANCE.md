@@ -32,13 +32,23 @@ Bytecode changes also require a full APK rebuild, original-aware DEX verificatio
 and device testing. Record supported app versions and results in
 `config/compatibility.json`.
 
+Use verified Desktop builds for development testing. Sign them with the same key
+as the installed app and install through ADB as an update to retain app data.
+Morphe Manager can export its signing key under Settings, System, Signing key.
+Keep exported keys under `.local/signing/` and compare certificate fingerprints
+before installation.
+
+Before release, patch the original APK in Morphe Manager and repeat the feature
+checks on its output. This verifies Android patching, memory use and installation
+after the development tests pass.
+
 ## Twitch version updates
 
 `scripts/evaluate-update.ps1` verifies an original APK or complete split bundle,
 records its identity and optionally decompiles or patches it. For example:
 
 ```powershell
-./scripts/evaluate-update.ps1 -InputApk '.local/inputs/twitch.apkm' -ExpectedVersion '31.5.2' -Decompile
+./scripts/evaluate-update.ps1 -InputApk '.local/inputs/twitch.apkm' -ExpectedVersion '31.6.0' -Decompile
 ```
 
 Review the candidate's hooks before updating `TwitchTarget.kt`. Evaluate native

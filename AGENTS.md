@@ -4,6 +4,8 @@
 
 Build independent Twitch Android patches compatible with Morphe. Each feature has its own patch, runtime code and explicit dependencies.
 
+UI customization options share the UI settings patch and registry. Keep each option's hooks and runtime policy separate, with a default of off. See [UI settings](docs/UI_SETTINGS.md).
+
 ## Layout
 
 - `patches/src/main/kotlin/dev/twitchpatches/patches/twitch/`: patch entry points, hook contracts and bytecode transformations, grouped by feature.

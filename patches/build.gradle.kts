@@ -14,7 +14,6 @@ patches {
     }
 }
 
-
 val patchListGeneratorClasspath = configurations.create("patchListGeneratorClasspath")
 
 dependencies {
@@ -38,7 +37,6 @@ tasks {
         })
     }
 
-    // semantic-release entry point.
     publish {
         dependsOn("generatePatchesList")
     }

@@ -12,7 +12,7 @@ final class EmoteSetting implements SettingGroup {
     @Override public String summary() { return "BTTV, FrankerFaceZ and 7TV emotes in chat and the emote picker."; }
     @Override public SettingSection section() { return SettingSection.CHAT; }
     @Override public List<ToggleSetting> children() {
-        return Arrays.asList(new ProviderSetting(-1, "Enable all"), new ProviderSetting(0, "BTTV"),
+        return Arrays.asList(new ProviderSetting(-1, "Enable all providers"), new ProviderSetting(0, "BTTV"),
                 new ProviderSetting(1, "7TV"), new ProviderSetting(2, "FrankerFaceZ"));
     }
 

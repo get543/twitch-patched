@@ -46,7 +46,6 @@ public final class PlaybackFrames {
         if (message != null) Log.i("TwitchPatchesTrace", "player=" + entry.number + " " + message);
     }
 
-    // Injected SDK state bridge.
     public static Statistics readPlayingStatistics(Object player) {
         throw new IllegalStateException("Frame snapshot bridge was not installed");
     }

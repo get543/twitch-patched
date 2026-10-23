@@ -37,7 +37,6 @@ public final class AdRuntime {
 
     public static String platform(String playerType) { return "popout".equals(playerType) ? "web" : "android"; }
 
-    // Injected GraphQL bridge.
     public static void nativeToken(Object owner, String channel, String playerType, TokenResult result) {
         throw new IllegalStateException("Native token bridge was not installed");
     }

@@ -68,6 +68,7 @@
         providers.forEach(function (provider, index) {
             if (!runtime.enabled(8 + index)) return;
             globalCatalog(index);
+            if (record.id === null) return;
             if (record.jobs[index] || Date.now() < record.retry[index] ||
                 (record.parts[index] && Date.now() - record.loaded[index] < 900000)) return;
             var job = request(channelURLs[index] + record.id);
@@ -88,11 +89,11 @@
         record.jobs = [null, null, null];
     }
     function retain(id) {
-        if (typeof id !== 'string' || !/^\d{1,20}$/.test(id)) return function () {};
+        id = channelId(id);
         var record = records.get(id);
         if (!record) {
-            if (records.size >= 8) {
-                var old = Array.from(records.values()).find(function (value) { return !value.refs; });
+            if (id !== null && records.size >= 8 + (records.has(null) ? 1 : 0)) {
+                var old = Array.from(records.values()).find(function (value) { return value.id !== null && !value.refs; });
                 if (!old) return function () {};
                 cancel(old); records.delete(old.id);
             }
@@ -120,8 +121,8 @@
     });
     runtime.emotes = {
         retain: retain,
-        snapshot: function (id) { var record = records.get(id); return record ? record.snapshot : empty; },
-        pickerSnapshot: function (id) { var record = records.get(id); return record ? record.picker : emptyPicker; },
+        snapshot: function (id) { var record = records.get(channelId(id)); return record ? record.snapshot : empty; },
+        pickerSnapshot: function (id) { var record = records.get(channelId(id)); return record ? record.picker : emptyPicker; },
         subscribe: function (callback) { listeners.add(callback); return function () { listeners.delete(callback); }; },
         failed: {has: function (url) {
             var failed = failures.get(url);
@@ -137,4 +138,5 @@
             if (Date.now() - lastMatch > 5000) { lastMatch = Date.now(); runtime.log('emotes ranges added count=' + count); }
         }
     };
+    function channelId(id) { return typeof id === 'string' && /^\d{1,20}$/.test(id) ? id : null; }
 })(globalThis.__twitchPatchRuntime);

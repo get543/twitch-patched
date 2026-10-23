@@ -14,7 +14,7 @@ internal data class NativeTokenContract(
     val service: ClassDef, val constructor: Method, val params: MethodReference, val absent: FieldReference,
     val paramsMask: Int, val query: MethodReference, val mapper: MethodReference, val parser: FieldReference,
     val mapperArguments: List<Int>, val graphql: MethodReference, val graphqlField: FieldReference,
-    val queryFlags: Int, val subscribe: Method, val subscribed: Method, val dispose: Method,
+    val queryFlags: Int, val subscribe: Method, val observer: NativeTokenObserver, val dispose: Method,
     val result: FieldReference, val serializer: Method, val platformIndex: Int,
     val platformRegister: Int, val paramsRegister: Int,
 )
@@ -80,13 +80,8 @@ internal fun BytecodePatchContext.resolveNativeTokens(): NativeTokenContract {
     if (parent != subscribe.definingClass) throw PatchException("Token GraphQL result is not the resolved Single type")
     val observer = classDefBy(subscribe.parameterTypes.single().toString())
     if (!AccessFlags.INTERFACE.isSet(observer.accessFlags)) throw PatchException("Token observer is not an interface")
-    observer.methods.filter { it.name == "onSuccess" && it.parameterTypes.map { p -> p.toString() } == listOf("Ljava/lang/Object;") && it.returnType == "V" }
-        .uniqueHook("native token observer success")
-    observer.methods.filter { it.name == "onError" && it.parameterTypes.map { p -> p.toString() } == listOf("Ljava/lang/Throwable;") && it.returnType == "V" }
-        .uniqueHook("native token observer error")
-    val subscribed = observer.methods.filter { it.name !in listOf("onSuccess", "onError") && it.parameterTypes.size == 1 && it.returnType == "V" }
-        .uniqueHook("native token subscription cancellation")
-    val dispose = classDefBy(subscribed.parameterTypes.single().toString()).methods.filter {
+    val callbacks = resolveTokenObserver(observer.methods)
+    val dispose = classDefBy(callbacks.subscribed.parameterTypes.single().toString()).methods.filter {
         it.name == "dispose" && it.parameterTypes.isEmpty() && it.returnType == "V"
     }.uniqueHook("native token disposal")
     val result = code.filter { it.opcode == Opcode.IGET_OBJECT }.mapNotNull {
@@ -109,9 +104,22 @@ internal fun BytecodePatchContext.resolveNativeTokens(): NativeTokenContract {
     if (serialCode.getOrNull(android.index + 1)?.opcode != Opcode.INVOKE_VIRTUAL)
         throw PatchException("Token platform serialization does not immediately consume its literal")
     return NativeTokenContract(service, constructor, params, absent, mask, query, mapperCall.third, parser,
-        mapperArguments, graphqlCall.third, graphqlField, queryFlags, subscribe, subscribed, dispose, result,
+        mapperArguments, graphqlCall.third, graphqlField, queryFlags, subscribe, callbacks, dispose, result,
         serializer, android.index, (android.value as OneRegisterInstruction).registerA,
         (cast.value as OneRegisterInstruction).registerA)
+}
+
+internal data class NativeTokenObserver(val success: Method, val error: Method, val subscribed: Method)
+
+internal fun resolveTokenObserver(methods: Iterable<Method>): NativeTokenObserver {
+    val callbacks = methods.filter { it.returnType == "V" && it.parameterTypes.size == 1 &&
+        AccessFlags.PUBLIC.isSet(it.accessFlags) && AccessFlags.ABSTRACT.isSet(it.accessFlags) }
+    val success = callbacks.filter { it.parameterTypes.single().toString() == "Ljava/lang/Object;" }
+        .uniqueHook("native token observer success")
+    val error = callbacks.filter { it.parameterTypes.single().toString() == "Ljava/lang/Throwable;" }
+        .uniqueHook("native token observer error")
+    val subscribed = callbacks.filter { it != success && it != error }.uniqueHook("native token subscription cancellation")
+    return NativeTokenObserver(success, error, subscribed)
 }
 
 internal fun invokeRegisters(instruction: Instruction): List<Int> = when (instruction) {

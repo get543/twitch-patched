@@ -16,7 +16,6 @@ import android.widget.TextView;
 final class NativeEmotePreview {
     private Dialog active;
 
-    // Injected native preview bridges.
     private static Dialog createDialog(Context context) { return null; }
     private static int[] resourceIds() { return new int[0]; }
 

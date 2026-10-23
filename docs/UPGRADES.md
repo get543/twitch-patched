@@ -1,8 +1,7 @@
 # Twitch version upgrades
 
-Each upgrade has a saved baseline, an immutable original APK, local verification,
-device acceptance and a separate release decision. Build and research artifacts
-remain under `.local/`. Supported versions and results live in
+Develop version upgrades on `dev`. Keep original APKs, recovery copies and build
+artifacts under `.local/`. Record supported versions and verification results in
 `config/compatibility.json`.
 
 ## Synchronize and save the baseline
@@ -45,31 +44,20 @@ A code/APK checkpoint does not contain the phone's private app data.
 
 ## Establish device recovery
 
-Same-package updates signed with the existing key normally retain login and
-settings. Returning to an older app version is a separate operation: Android
-restricts version-code downgrades, and newer app data may be incompatible with
-older code. ADB's `install -d` supports debuggable packages; it is not a general
-rollback mechanism for release APKs. Apps targeting Android 12 or later also
-exclude private data from ordinary ADB backups unless they are debuggable.
+Development updates use the original package and the installed app's signing key
+to retain login and settings. Export Morphe Manager's key under **Settings >
+System > Signing key** and keep it under `.local/signing/`. Compare certificate
+fingerprints before installing an update.
 
-Select and verify a recovery route before replacing the daily-use installation:
+Keep app-data recovery separate from APK backups. Android restricts release APK
+downgrades, and newer app data may not work with older code. `adb install -d`
+does not provide a general rollback route for release apps. Returning to an older
+version may require reinstalling and signing in again.
 
-| Route | Recovery |
-| --- | --- |
-| Emulator with an original-package candidate | Restore a snapshot of the emulator and its app data. |
-| Separate candidate package on a physical device | Keep the stable installation intact; discard the candidate if testing fails. |
-| In-place physical-device update | Requires a verified downgrade/data-restore route, or acceptance that recovery may require signing in again. |
-
-A separate candidate package needs its own verified authorities, component
-references, links and Firebase package header. It requires a separate login and
-does not fully reproduce the original-package installation. Candidate package
-renaming and emulator snapshots are not automated by the current scripts.
-Different Android users or work profiles still share a package's installed code and do not isolate
+Use an emulator snapshot when recovery must preserve the previous app state.
+The current scripts do not automate emulator snapshots or candidate package
+renaming. Android work profiles share installed package code and do not isolate
 two versions of the same package.
-
-For strict preservation of the stable phone installation, use isolated testing.
-An in-place update follows only after the recovery method and candidate are
-accepted. Installation, data clearing and publication are separate decisions.
 
 ## Inspect the original
 
@@ -134,11 +122,12 @@ in-place update. Retain logs locally while the candidate is used overnight.
 | --- | --- |
 | Playback | Native, initial V2 Classic Split, Vertical View, swipe feed, rotation, background audio and raids. |
 | Ads | Actual preroll/midroll opportunities, stream continuity, quality and normal controls without stale ad overlays. |
-| Chat | Static and animated global/channel BTTV, FrankerFaceZ and 7TV emotes, previews, Back navigation and channel changes. |
+| Chat | Static and animated BTTV, FrankerFaceZ and 7TV emotes in live chat, VOD replay and the picker; provider switches, previews, Back navigation and channel changes. |
 | Channel points | An available bonus is claimed without a manual tap. |
 | Promotions | Turbo, discounts and feed cards suppressed; Drops and train overlays remain usable. |
 | Reload | Double-tap works on initial entry and after view changes, retaining quality and mode. |
 | Settings | Feature toggles recover both ways; omitted patches have no settings. |
+| UI settings | Group and individual controls work independently, empty action rows collapse, and fullscreen player/settings windows respond to both system-bar toggle directions. |
 | Theme | Dark, Light and System settings update Following, Live, Clips and navigation. Check initial entry, clip loading, refresh and tab changes; headers scroll and category labels remain visible. Patch settings opens immediately after a theme change. |
 | DJ playback | Background audio, audio-only and picture-in-picture controls work in native and V2 playback when the corresponding renditions are available. |
 | Notifications | A real live alert arrives in the background and opens its channel; record delivery timing separately. |

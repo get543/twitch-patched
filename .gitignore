@@ -1,5 +1,6 @@
 # Local originals, tools, signing keys, research and run artifacts.
 /.local/
+/.codex-remote-attachments/
 
 # Build output and caches.
 .gradle/

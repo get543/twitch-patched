@@ -6,7 +6,7 @@ import app.morphe.patcher.patch.Compatibility
 
 object TwitchTarget {
     const val PACKAGE_NAME = "tv.twitch.android.app"
-    const val BASELINE_VERSION = "31.5.2"
+    const val BASELINE_VERSION = "31.6.0"
 
     val compatibility = Compatibility(
         name = "Twitch",
@@ -19,7 +19,7 @@ object TwitchTarget {
                 description = "Tested on ARM64 with native and swipe-feed players.",
             ),
             AppTarget(
-                version = "31.4.2",
+                version = "31.5.2",
                 isExperimental = false,
                 description = "Tested on ARM64 with native and swipe-feed players.",
             ),

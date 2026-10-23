@@ -69,4 +69,24 @@ public final class SettingRegistryTest {
             @Override public void setEnabled(boolean value) { enabled = value; }
         };
     }
+
+    @Test public void nestedGroupsResolveWithoutFlatteningTheirToggles() {
+        SettingRegistry registry = new SettingRegistry();
+        SettingGroup nested = group("ui_classic", List.of(setting("clip", SettingSection.INTERFACE)));
+        SettingGroup root = group("ui_settings", List.of(nested));
+        registry.register(root);
+        assertSame(nested, registry.group("ui_classic"));
+        assertEquals(List.of(root), registry.snapshot());
+        assertNull(registry.group("clip"));
+    }
+
+    private static SettingGroup group(String key, List<? extends SettingEntry> entries) {
+        return new SettingGroup() {
+            @Override public String key() { return key; }
+            @Override public String title() { return key; }
+            @Override public String summary() { return ""; }
+            @Override public SettingSection section() { return SettingSection.INTERFACE; }
+            @Override public List<? extends SettingEntry> children() { return entries; }
+        };
+    }
 }

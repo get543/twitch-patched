@@ -12,6 +12,7 @@ import android.widget.TextView;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 final class TwitchSettingsRows {
     private TwitchSettingsRows() { }
@@ -30,7 +31,7 @@ final class TwitchSettingsRows {
         }
     }
 
-    private static View navigation(ViewGroup parent, SettingGroup group, Consumer<SettingGroup> open) {
+    static View navigation(ViewGroup parent, SettingGroup group, Consumer<SettingGroup> open) {
         View row = inflate(parent, "sub_menu_recycler_item");
         TextView title = TwitchSettingsResources.view(row, "menu_item_title", TextView.class);
         TextView description = TwitchSettingsResources.view(row, "menu_item_description", TextView.class);
@@ -43,7 +44,39 @@ final class TwitchSettingsRows {
         row.setFocusable(true);
         row.setOnClickListener(view -> open.accept(group));
         row.setSaveFromParentEnabled(false);
+        TwitchSettingsIcons.decorate(row, group, true);
         return row;
+    }
+
+    static void results(ViewGroup parent, List<SettingsSearch.Result> results, Consumer<SettingGroup> open) {
+        List<Runnable> updates = new ArrayList<>();
+        for (SettingsSearch.Result result : results) {
+            if (result.entry instanceof ToggleSetting)
+                parent.addView(row(parent, (ToggleSetting) result.entry, updates, result::summary));
+            else {
+                SettingGroup group = (SettingGroup) result.entry;
+                View row = navigation(parent, group, open);
+                TextView description = TwitchSettingsResources.view(row, "menu_item_description", TextView.class);
+                description.setText(result.summary());
+                description.setVisibility(View.VISIBLE);
+                row.setContentDescription(group.title() + ". " + result.summary());
+                parent.addView(row);
+            }
+        }
+        if (results.isEmpty()) empty(parent, "No matching settings.");
+    }
+
+    static void empty(ViewGroup parent, String message) {
+        View row = inflate(parent, "sub_menu_recycler_item");
+        row.setForeground(null);
+        row.setClickable(false);
+        row.setFocusable(false);
+        TextView title = TwitchSettingsResources.view(row, "menu_item_title", TextView.class);
+        title.setVisibility(View.GONE);
+        TextView description = TwitchSettingsResources.view(row, "menu_item_description", TextView.class);
+        description.setText(message);
+        description.setVisibility(View.VISIBLE);
+        parent.addView(row);
     }
 
     private static View header(ViewGroup parent, SettingSection section) {
@@ -57,6 +90,10 @@ final class TwitchSettingsRows {
     }
 
     private static View row(ViewGroup parent, ToggleSetting option, List<Runnable> updates) {
+        return row(parent, option, updates, option::summary);
+    }
+
+    private static View row(ViewGroup parent, ToggleSetting option, List<Runnable> updates, Supplier<String> summary) {
         View row = inflate(parent, "toggle_menu_recycler_item");
         TextView title = TwitchSettingsResources.view(row, "menu_item_title", TextView.class);
         TextView description = TwitchSettingsResources.view(row, "menu_item_description", TextView.class);
@@ -67,8 +104,7 @@ final class TwitchSettingsRows {
         if (footer.getParent() instanceof View) ((View) footer.getParent()).setVisibility(View.GONE);
         title.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         description.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        if (!option.summary().isEmpty())
-            toggle.setMinimumHeight(Math.round(48 * parent.getResources().getDisplayMetrics().density));
+        toggle.setMinimumHeight(Math.round(48 * parent.getResources().getDisplayMetrics().density));
         View text = (View) description.getParent();
         LinearLayout.LayoutParams textParams = (LinearLayout.LayoutParams) text.getLayoutParams();
         textParams.gravity = Gravity.CENTER_VERTICAL;
@@ -80,9 +116,10 @@ final class TwitchSettingsRows {
         Runnable update = () -> {
             toggle.setOnCheckedChangeListener(null);
             toggle.setChecked(option.isEnabled());
-            description.setText(option.summary());
-            description.setVisibility(option.summary().isEmpty() ? View.GONE : View.VISIBLE);
-            toggle.setContentDescription(option.title() + ". " + option.summary());
+            String details = summary.get();
+            description.setText(details);
+            description.setVisibility(details.isEmpty() ? View.GONE : View.VISIBLE);
+            toggle.setContentDescription(option.title() + ". " + details);
             toggle.setOnCheckedChangeListener(listener);
         };
         updates.add(update);
@@ -93,6 +130,7 @@ final class TwitchSettingsRows {
         // Repeated row IDs share restored state; disable native restoration.
         row.setSaveFromParentEnabled(false);
         toggle.setSaveEnabled(false);
+        TwitchSettingsIcons.decorate(row, option, false);
         return row;
     }
 

@@ -50,10 +50,15 @@ public final class PatchSettings implements Application.ActivityLifecycleCallbac
     }
 
     public static void open() {
+        openGroup(null);
+    }
+
+    public static void openGroup(String key) {
         PatchSettings settings = instance;
         if (settings == null) return;
         settings.main.post(() -> {
-            settings.openRequest.request();
+            if (key != null && settings.options.group(key) == null) return;
+            settings.openRequest.request(key);
             settings.showRequestedPage();
         });
     }
@@ -63,7 +68,7 @@ public final class PatchSettings implements Application.ActivityLifecycleCallbac
         if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
         FragmentManager manager = activity.getFragmentManager();
         if (openRequest.consume(!manager.isStateSaved(), manager.findFragmentByTag(PatchSettingsPage.TAG) != null))
-            new PatchSettingsPage().show(manager, PatchSettingsPage.TAG);
+            PatchSettingsPage.forGroup(openRequest.groupKey()).show(manager, PatchSettingsPage.TAG);
     }
 
     @Override public void onActivityResumed(Activity activity) {

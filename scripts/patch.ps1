@@ -6,6 +6,7 @@ param(
     [switch] $Install,
     [string] $AuditOriginalBaseApk,
     [switch] $KeepScratch,
+    [ValidateRange(256, 16384)][int] $HeapMb = 4096,
     [string] $Serial
 )
 . "$PSScriptRoot/common.ps1"
@@ -56,7 +57,7 @@ $keystore = Get-ProjectPath '.local/signing/development.bks'
 New-Item -ItemType Directory -Path (Split-Path $keystore) -Force | Out-Null
 $sdk = Get-AndroidSdk
 $env:PATH = "$(Join-Path $sdk 'platform-tools');$env:PATH"
-$arguments = @('-Xmx4g', '-jar', $morphe, 'patch', '-p', $bundle, '--exclusive')
+$arguments = @("-Xmx${HeapMb}m", '-jar', $morphe, 'patch', '-p', $bundle, '--exclusive')
 if ($KeepScratch) { $arguments += '--disable-purge' }
 foreach ($name in $Patch) { $arguments += @('-e', $name) }
 $arguments += @('--bytecode-mode=FULL')
@@ -71,6 +72,7 @@ $arguments += @('--keystore', $keystore,
     patches = $Patch
     tool = 'Morphe Desktop 1.18.0'
     bytecodeMode = 'FULL'
+    heapMb = $HeapMb
     verification = if ($auditBase) { 'original-aware local audit' } else { 'unqualified SDK' }
     originalBaseSha256 = if ($auditBase) { (Get-FileHash -LiteralPath $auditBase -Algorithm SHA256).Hash } else { $null }
     gitRevision = (& git -C $script:ProjectRoot rev-parse HEAD | Out-String).Trim()

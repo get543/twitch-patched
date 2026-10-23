@@ -25,7 +25,8 @@ internal val reactNativeFeedAdsPatch = resourcePatch {
         get(RN_ASSET).appendText("\n" + assetSource("headliner-no-fill.js")
             .replace("__TWITCH_HEADLINER_REQUEST_MODULE__", headliner.module.toString())
             .replace("__TWITCH_HEADLINER_STATE_MODULE__", headlinerState.module.toString()))
-        val stream = exports.resolve("StreamDisplayAdSurface",
+        val stream = exports.resolve("StreamDisplayAdSurface", emptySet())
+        exports.requireNestedContract("StreamDisplayAdSurface",
             setOf("enabled", "sdaState", "pushdownSlotAvailable", "leftStripAvailable", "StreamDisplayAdCreative"))
         val item = exports.resolveMemo("FeedAdItem", "FeedAdItemComponent",
             setOf("node", "active", "DisplayAdRenderer", "VideoAdRenderer", "freeScroll"))

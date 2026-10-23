@@ -44,14 +44,14 @@ test('feed theme updates preserve identity, route and the original component', (
 });
 
 test('DJ settings retain rendition availability and the original actions', () => {
-    const original = () => {};
+    const original = props => ({type: 'PlaybackSheet', props});
     const state = install('playback-settings.js', 'PlaybackSettingsSheet', '__TWITCH_PLAYBACK_SETTINGS_MODULE__', original);
     const actions = {onAudioOnlyChange() {}, onBgaSettingChange() {}, onPipAutoPopoutChange() {}};
     for (const hasAudioRendition of [false, true]) {
         const props = {...actions, isParticipatingDJ: true, hasAudioRendition, audioOnly: false,
             bgaSetting: 'never', pipAutoPopout: false, drmEnabled: true};
         const result = state.render(props);
-        assert.equal(result.type, original);
+        assert.equal(result.type, 'PlaybackSheet');
         assert.equal(result.props.isParticipatingDJ, false);
         assert.equal(result.props.hasAudioRendition, hasAudioRendition);
         assert.equal(result.props.drmEnabled, true);

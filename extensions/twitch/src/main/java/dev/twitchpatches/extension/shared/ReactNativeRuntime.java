@@ -22,10 +22,11 @@ import dev.twitchpatches.extension.promotions.SubscriptionBannerSettings;
 import dev.twitchpatches.extension.ads.AdSettings;
 import dev.twitchpatches.extension.emotes.EmoteRuntime;
 import dev.twitchpatches.extension.reload.ReloadRuntime;
+import dev.twitchpatches.extension.ui.UiSettings;
 
 public final class ReactNativeRuntime implements Application.ActivityLifecycleCallbacks {
     private static final WeakHashMap<Object, Boolean> instances = new WeakHashMap<>();
-    private static final boolean[] selected = new boolean[7];
+    private static final boolean[] selected = new boolean[8];
     private static boolean initialized;
     private static int resumed;
     private static volatile CompletableFuture<String> bootstrap;
@@ -43,7 +44,7 @@ public final class ReactNativeRuntime implements Application.ActivityLifecycleCa
                 byte[] buffer = new byte[8192];
                 int count;
                 while ((count = input.read(buffer)) != -1) {
-                    if (data.size() + count > 65536) throw new java.io.IOException("Patch bootstrap exceeds bounds.");
+                    if (data.size() + count > 131072) throw new java.io.IOException("Patch bootstrap exceeds bounds.");
                     data.write(buffer, 0, count);
                 }
                 Path file = Files.createTempFile(application.getCodeCacheDir().toPath(), "twitch-patch-", ".js");
@@ -63,6 +64,7 @@ public final class ReactNativeRuntime implements Application.ActivityLifecycleCa
     public static synchronized void attach(Object instance) {
         if (!Boolean.TRUE.equals(instances.get(instance))) return;
         dispatch(instance, policy());
+        if (selected[7]) dispatchUi(instance, UiSettings.snapshot());
     }
 
     public static synchronized void preloaded(Object instance) {
@@ -91,7 +93,11 @@ public final class ReactNativeRuntime implements Application.ActivityLifecycleCa
 
     public static synchronized void refresh() {
         boolean[] policy = policy();
-        for (Object instance : instances.keySet()) dispatch(instance, policy);
+        String ui = selected[7] ? UiSettings.snapshot() : null;
+        for (Object instance : instances.keySet()) {
+            dispatch(instance, policy);
+            if (ui != null) dispatchUi(instance, ui);
+        }
     }
 
     public static boolean lightTheme() { return TwitchTheme.light(); }
@@ -107,6 +113,10 @@ public final class ReactNativeRuntime implements Application.ActivityLifecycleCa
 
     private static void dispatch(Object instance, boolean[] policy) {
         throw new IllegalStateException("React Native policy bridge was not generated.");
+    }
+
+    private static void dispatchUi(Object instance, String preferences) {
+        throw new IllegalStateException("React Native UI bridge was not generated.");
     }
 
     @Override public void onActivityResumed(Activity activity) { synchronized (ReactNativeRuntime.class) { resumed++; refresh(); } }

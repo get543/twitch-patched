@@ -4,7 +4,7 @@
         return function (props) {
             var settings = props.isParticipatingDJ === true ?
                 Object.assign({}, props, {isParticipatingDJ: false}) : props;
-            return React.createElement(original, settings);
+            return original.call(this, settings);
         };
     });
 })(globalThis);

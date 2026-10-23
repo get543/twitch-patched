@@ -76,6 +76,18 @@ internal fun BytecodePatchContext.applyNativeTokens(hooks: NativeTokenContract) 
         .uniqueHook("native token value")
     val callback = mutableClassDefBy(RESULT)
     callback.interfaces.add(subscribe.parameterTypes.single().toString())
+    listOf("onSuccess" to observer.success, "onError" to observer.error).forEach { (name, target) ->
+        val method = callback.methods.filter { it.name == name && it.returnType == target.returnType &&
+            it.parameterTypes.map { p -> p.toString() } == target.parameterTypes.map { p -> p.toString() }
+        }.uniqueHook("extension token $name callback")
+        callback.methods.remove(method)
+        require(callback.methods.none { it.name == target.name && it.parameterTypes == method.parameterTypes }) {
+            "Token observer callback name collides."
+        }
+        method.name = target.name
+        callback.methods.add(method)
+    }
+    val subscribed = observer.subscribed
     if (callback.methods.any { it.name == subscribed.name }) throw PatchException("Token observer callback name collides")
     val onSubscribe = ImmutableMethod(RESULT, subscribed.name,
         listOf(ImmutableMethodParameter(subscribed.parameterTypes.single().toString(), null, null)), "V",

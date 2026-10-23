@@ -5,4 +5,5 @@ public interface SettingEntry {
     String title();
     String summary();
     SettingSection section();
+    default String icon() { return section().icon(); }
 }
