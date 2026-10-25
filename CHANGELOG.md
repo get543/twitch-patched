@@ -1,3 +1,9 @@
+## [1.1.0](https://github.com/get543/twitch-patched/compare/v1.0.0...v1.1.0) (2026-10-25)
+
+### Features
+
+* **ci:** Update build workflow to auto-download Twitch APK and refine APK retrieval logic ([0d7672e](https://github.com/get543/twitch-patched/commit/0d7672e22105214bbc5130f044e301d5d0e5a012))
+
 ## 1.0.0 (2026-10-23)
 
 ### Bug Fixes
