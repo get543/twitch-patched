@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       apk_url:
-        description: 'Direct download URL for Twitch APK/APKM (Optional - leave empty if using repository secret TWITCH_APK_URL)'
+        description: 'Direct download URL for Twitch APK/APKM (Optional - leave empty to auto-download 31.6.0 from APKMirror)'
         required: false
         type: string
   push:
-    branches: [main, dev]
+    branches: [main]
 
 jobs:
   build-apk:
@@ -51,7 +51,18 @@ jobs:
               throw "Gradle patch bundle build failed with exit code $LASTEXITCODE."
           }
 
-      - name: Obtain Twitch APK / APKM
+      - name: Download Twitch 31.6.0 from APKMirror
+        uses: Yakov5776/gh-apkmirror-dl@v1.3
+        continue-on-error: true
+        with:
+          org: 'twitch-interactive-inc'
+          repo: 'twitch'
+          version: '31.6.0'
+          bundle: true
+          filename: 'twitch.apkm'
+
+      - name: Obtain Twitch APK / APKM Fallback
+        if: hashFiles('twitch.apkm', 'twitch.apk') == ''
         shell: pwsh
         env:
           INPUT_URL: ${{ inputs.apk_url }}
@@ -63,12 +74,8 @@ jobs:
           if ($url) {
               Write-Host "Downloading Twitch APK/APKM from provided URL..."
               Invoke-WebRequest -Uri $url -OutFile "twitch.apkm"
-          } elseif (Test-Path "twitch.apkm") {
-              Write-Host "Using twitch.apkm in repository root."
-          } elseif (Test-Path "twitch.apk") {
-              Write-Host "Using twitch.apk in repository root."
           } else {
-              Write-Host "No Twitch APK URL provided and no twitch.apkm or twitch.apk found."
+              Write-Host "No Twitch APK download source available and no local file found."
               Write-Host "Skipping APK patching step. (.mpp bundle was built successfully)"
           }
 
