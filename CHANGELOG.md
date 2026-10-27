@@ -1,3 +1,47 @@
+## [1.3.0](https://github.com/ryykitty/twitch-patched/compare/v1.2.0...v1.3.0) (2026-10-26)
+
+### Bug Fixes
+
+* hide remaining channel actions and collapse empty player rows ([3b11aec](https://github.com/ryykitty/twitch-patched/commit/3b11aec84a845e4e2cff8d6fcf6b86ee98c5b1b4))
+* match emote asset instructions with Morphe Patcher 2 ([3513569](https://github.com/ryykitty/twitch-patched/commit/351356920df6aca04dc029b6f2973056b2039ed0))
+* refresh reload bindings when native player controls are reused ([2b21abf](https://github.com/ryykitty/twitch-patched/commit/2b21abf09342231ebc93dc191571845cf0a3b018))
+* remove vertical feed ad slots and reserved banner spacing ([9f90570](https://github.com/ryykitty/twitch-patched/commit/9f905703c0a291370182ba98f12412140a0d9d36))
+* reveal retained deleted messages in native and React Native chat ([776e6ea](https://github.com/ryykitty/twitch-patched/commit/776e6ea0f2be295e171fc723d860aade8a06023e))
+* simplify patch settings rows and show group visibility summaries ([ae63ea8](https://github.com/ryykitty/twitch-patched/commit/ae63ea8fa55f743b7eeeafa060528f6660f84a2c))
+* stabilize fullscreen system bars and live settings changes ([7492cb5](https://github.com/ryykitty/twitch-patched/commit/7492cb5c416d1264ede039c5b8287697cf66238f))
+* support Twitch 31.7.0 ([d3dd457](https://github.com/ryykitty/twitch-patched/commit/d3dd45761438b8358c6e27c246972ddab26a21fd))
+
+### Features
+
+* add Hype Train and leaderboard visibility settings ([863b7df](https://github.com/ryykitty/twitch-patched/commit/863b7dfe0cbe965144ab750ccffb318c88de50a6))
+* show deleted messages ([e31bd3a](https://github.com/ryykitty/twitch-patched/commit/e31bd3aa73b206bf4524057147934a056837d860))
+
+### App Support
+
+* support Twitch 31.8 beta and Morphe Patcher 2 ([48359d9](https://github.com/ryykitty/twitch-patched/commit/48359d993273adf04029e1bfed24ed2bef9e9f8f))
+
+## [1.3.0-dev.1](https://github.com/ryykitty/twitch-patched/compare/v1.2.0...v1.3.0-dev.1) (2026-10-26)
+
+### Bug Fixes
+
+* hide remaining channel actions and collapse empty player rows ([3b11aec](https://github.com/ryykitty/twitch-patched/commit/3b11aec84a845e4e2cff8d6fcf6b86ee98c5b1b4))
+* match emote asset instructions with Morphe Patcher 2 ([3513569](https://github.com/ryykitty/twitch-patched/commit/351356920df6aca04dc029b6f2973056b2039ed0))
+* refresh reload bindings when native player controls are reused ([2b21abf](https://github.com/ryykitty/twitch-patched/commit/2b21abf09342231ebc93dc191571845cf0a3b018))
+* remove vertical feed ad slots and reserved banner spacing ([9f90570](https://github.com/ryykitty/twitch-patched/commit/9f905703c0a291370182ba98f12412140a0d9d36))
+* reveal retained deleted messages in native and React Native chat ([776e6ea](https://github.com/ryykitty/twitch-patched/commit/776e6ea0f2be295e171fc723d860aade8a06023e))
+* simplify patch settings rows and show group visibility summaries ([ae63ea8](https://github.com/ryykitty/twitch-patched/commit/ae63ea8fa55f743b7eeeafa060528f6660f84a2c))
+* stabilize fullscreen system bars and live settings changes ([7492cb5](https://github.com/ryykitty/twitch-patched/commit/7492cb5c416d1264ede039c5b8287697cf66238f))
+* support Twitch 31.7.0 ([d3dd457](https://github.com/ryykitty/twitch-patched/commit/d3dd45761438b8358c6e27c246972ddab26a21fd))
+
+### Features
+
+* add Hype Train and leaderboard visibility settings ([863b7df](https://github.com/ryykitty/twitch-patched/commit/863b7dfe0cbe965144ab750ccffb318c88de50a6))
+* show deleted messages ([e31bd3a](https://github.com/ryykitty/twitch-patched/commit/e31bd3aa73b206bf4524057147934a056837d860))
+
+### App Support
+
+* support Twitch 31.8 beta and Morphe Patcher 2 ([48359d9](https://github.com/ryykitty/twitch-patched/commit/48359d993273adf04029e1bfed24ed2bef9e9f8f))
+
 ## [1.2.0](https://github.com/ryykitty/twitch-patched/compare/v1.1.0...v1.2.0) (2026-10-17)
 
 ### Bug Fixes
