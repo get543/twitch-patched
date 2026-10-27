@@ -1,3 +1,9 @@
+## [1.2.0](https://github.com/get543/twitch-patched/compare/v1.1.0...v1.2.0) (2026-10-27)
+
+### Features
+
+* **ui:** Add hooks and patches for chat overlays, fullscreen state, hype train, and metadata actions ([33bbe01](https://github.com/get543/twitch-patched/commit/33bbe0185a608a4702ff3e934e5877b59cf76225))
+
 ## [1.3.0](https://github.com/ryykitty/twitch-patched/compare/v1.2.0...v1.3.0) (2026-10-26)
 
 ### Bug Fixes
