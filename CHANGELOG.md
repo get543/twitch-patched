@@ -1,3 +1,10 @@
+## [1.4.0](https://github.com/get543/twitch-patched/compare/v1.3.0...v1.4.0) (2026-10-27)
+
+### Features
+
+* **ci:** Update build workflow to include APK fallback URL and enhance patching process ([6285a4b](https://github.com/get543/twitch-patched/commit/6285a4b714e35769691fa07204c0bc8b8c5079f4))
+* Remove old workflows and add new build and release workflow for patched APK ([61c6565](https://github.com/get543/twitch-patched/commit/61c6565aeff285fa78b13e5f40894d3f26740718))
+
 ## [1.3.0](https://github.com/get543/twitch-patched/compare/v1.2.0...v1.3.0) (2026-10-27)
 
 ### Features
