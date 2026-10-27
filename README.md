@@ -34,11 +34,11 @@ All feature patches are selected and enabled by default. UI customization option
 
 Supported Twitch versions:
 
-| Version | Version code |
-| --- | --- |
-| 31.7.0 | 3107006 |
-| 31.6.0 | 3106006 |
-| 31.5.2 | 3105026 |
+| Version | Version code | Download |
+| --- | --- | -- |
+| 31.7.0 | 3107006 | [Link](https://www.apkmirror.com/apk/twitch-interactive-inc/twitch/twitch-live-streaming-31-7-0-release/twitch-live-streaming-31-7-0-2-android-apk-download/)
+| 31.6.0 | 3106006 | [Link](https://www.apkmirror.com/apk/twitch-interactive-inc/twitch/twitch-live-streaming-31-6-0-release/twitch-live-streaming-31-6-0-3-android-apk-download/)
+| 31.5.2 | 3105026 | [Link](https://www.apkmirror.com/apk/twitch-interactive-inc/twitch/twitch-live-streaming-31-5-2-release/twitch-live-streaming-31-5-2-2-android-apk-download/)
 
 Twitch 31.7.0 is the stable baseline. Earlier versions remain supported by the same hooks. Twitch 31.8.0_BETA (13108003) is an experimental target. Verification uses ARM64 on Android 13. See [compatibility data](config/compatibility.json) for build results, device checks and remaining validation.
 
