@@ -1,3 +1,9 @@
+## [1.3.0](https://github.com/get543/twitch-patched/compare/v1.2.0...v1.3.0) (2026-10-27)
+
+### Features
+
+* **ci:** Enhance build workflows with patch bundle upload and dev branch backmerge check ([1348dc9](https://github.com/get543/twitch-patched/commit/1348dc9463ee8b02a8a0682db059a43d9c9d9de6))
+
 ## [1.2.0](https://github.com/get543/twitch-patched/compare/v1.1.0...v1.2.0) (2026-10-27)
 
 ### Features
