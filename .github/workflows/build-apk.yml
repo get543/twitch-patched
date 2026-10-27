@@ -8,7 +8,7 @@ on:
         required: false
         type: string
   push:
-    branches: [main]
+    branches: [dev, main]
 
 jobs:
   build-apk:
@@ -51,13 +51,13 @@ jobs:
               throw "Gradle patch bundle build failed with exit code $LASTEXITCODE."
           }
 
-      - name: Download Twitch 31.6.0 from APKMirror
+      - name: Download Twitch 31.7.0 from APKMirror
         uses: Yakov5776/gh-apkmirror-dl@v1.3
         continue-on-error: true
         with:
           org: 'twitch-interactive-inc'
           repo: 'twitch'
-          version: '31.6.0'
+          version: '31.7.0'
           bundle: true
           filename: 'twitch.apkm'
 
