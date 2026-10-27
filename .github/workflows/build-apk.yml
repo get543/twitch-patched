@@ -42,6 +42,7 @@ jobs:
         run: ./scripts/bootstrap-tools.ps1
 
       - name: Build patch bundle (.mpp)
+        id: bundle
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -50,6 +51,24 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
               throw "Gradle patch bundle build failed with exit code $LASTEXITCODE."
           }
+          $versionLine = @(Get-Content "gradle.properties" | Where-Object { $_ -match '^version\s*=' })
+          if ($versionLine.Count -ne 1) {
+              throw "Expected exactly one version property in gradle.properties."
+          }
+          $version = ($versionLine[0] -split '=', 2)[1].Trim()
+          $bundlePath = "patches/build/libs/patches-$version.mpp"
+          if (-not (Test-Path -LiteralPath $bundlePath)) {
+              throw "Expected patch bundle was not produced: $bundlePath"
+          }
+          "path=$bundlePath" | Add-Content -Path $env:GITHUB_OUTPUT
+
+      - name: Upload patch bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: patches-mpp
+          path: ${{ steps.bundle.outputs.path }}
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Download Twitch 31.7.0 from APKMirror
         uses: Yakov5776/gh-apkmirror-dl@v1.3

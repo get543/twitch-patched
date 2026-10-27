@@ -58,6 +58,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew clean :patches:buildAndroid :patches:generatePatchesList :patches:test :extensions:twitch:testDebugUnitTest --no-daemon
 
+      - name: Ensure backmerge branch exists
+        if: github.event_name != 'pull_request' && github.ref_name == 'main' && vars.PATCH_RELEASES_ENABLED == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git ls-remote --exit-code --heads origin dev >/dev/null 2>&1; then
+            echo "Remote dev branch exists."
+          else
+            echo "Remote dev branch is missing; creating it from the current main commit for the configured release backmerge."
+            git push origin HEAD:refs/heads/dev
+          fi
+
       - name: Release
         if: github.event_name != 'pull_request' && vars.PATCH_RELEASES_ENABLED == 'true'
         uses: cycjimmy/semantic-release-action@v6
