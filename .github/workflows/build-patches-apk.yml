@@ -2,22 +2,37 @@ name: Build Patches & APK
 
 on:
   workflow_dispatch:
+    inputs:
+      apk_url:
+        description: 'Direct download URL for a Twitch APK/APKM if APKMirror download fails'
+        required: false
+        type: string
   push:
     branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || 'patch-releases' }}
+  cancel-in-progress: false
+  queue: max
 
 jobs:
-  build-apk:
-    name: Build Patched APK
+  build-release:
+    name: Build, Patch & Release
     runs-on: ubuntu-latest
     permissions:
       contents: write
       packages: read
+      id-token: write
+      attestations: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.ref || github.ref_name }}
 
       - name: Setup Java 21
         uses: actions/setup-java@v4
@@ -25,41 +40,110 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
       - name: Check source hygiene
         shell: pwsh
         run: ./scripts/check-source.ps1
 
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Test JavaScript adapters
+        run: npm test
+
       - name: Ensure Android SDK Platform 36
         run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"'
 
-      - name: Bootstrap Morphe tools
-        shell: pwsh
-        run: ./scripts/bootstrap-tools.ps1
-
-      - name: Build patch bundle (.mpp)
-        id: bundle
-        shell: pwsh
+      - name: Build and test patches
+        id: build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ./gradlew clean :patches:buildAndroid :patches:generatePatchesList --console=plain --no-daemon
-          if ($LASTEXITCODE -ne 0) {
-              throw "Gradle patch bundle build failed with exit code $LASTEXITCODE."
+          ./gradlew clean :patches:buildAndroid :patches:generatePatchesList :patches:test :extensions:twitch:testDebugUnitTest --no-daemon
+          version="$(sed -n 's/^version[[:space:]]*=[[:space:]]*//p' gradle.properties)"
+          if [ -z "$version" ] || [ "$(printf '%s\n' "$version" | wc -l)" -ne 1 ]; then
+            echo "Expected exactly one version property in gradle.properties." >&2
+            exit 1
+          fi
+          bundle="patches/build/libs/patches-${version}.mpp"
+          if [ ! -f "$bundle" ]; then
+            echo "Expected patch bundle was not produced: $bundle" >&2
+            exit 1
+          fi
+          cp "$bundle" "$RUNNER_TEMP/patches-built.mpp"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure backmerge branch exists
+        if: github.event_name != 'pull_request' && github.ref_name == 'main' && vars.PATCH_RELEASES_ENABLED == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git ls-remote --exit-code --heads origin dev >/dev/null 2>&1; then
+            echo "Remote dev branch exists."
+          else
+            echo "Remote dev branch is missing; creating it from the current main commit for the configured release backmerge."
+            git push origin HEAD:refs/heads/dev
+          fi
+
+      - name: Semantic release
+        if: github.event_name != 'pull_request' && vars.PATCH_RELEASES_ENABLED == 'true'
+        uses: cycjimmy/semantic-release-action@v6
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Restore patch bundle for APK patching
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_PUBLISHED: ${{ steps.release.outputs.new_release_published }}
+          RELEASE_TAG: ${{ steps.release.outputs.new_release_git_tag }}
+          RELEASE_VERSION: ${{ steps.release.outputs.new_release_version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:RELEASE_PUBLISHED -eq 'true') {
+              gh release download $env:RELEASE_TAG --pattern "patches-$($env:RELEASE_VERSION).mpp" --dir $env:RUNNER_TEMP
+              if ($LASTEXITCODE -ne 0) {
+                  throw "Could not download the patch bundle for release $($env:RELEASE_TAG)."
+              }
+              $sourceBundle = Join-Path $env:RUNNER_TEMP "patches-$($env:RELEASE_VERSION).mpp"
+          } else {
+              $sourceBundle = Join-Path $env:RUNNER_TEMP 'patches-built.mpp'
           }
-          $versionLine = @(Get-Content "gradle.properties" | Where-Object { $_ -match '^version\s*=' })
+          if (-not (Test-Path -LiteralPath $sourceBundle)) {
+              throw "Patch bundle not found: $sourceBundle"
+          }
+          $versionLine = @(Get-Content 'gradle.properties' | Where-Object { $_ -match '^version\s*=' })
           if ($versionLine.Count -ne 1) {
-              throw "Expected exactly one version property in gradle.properties."
+              throw 'Expected exactly one version property in gradle.properties after semantic release.'
           }
           $version = ($versionLine[0] -split '=', 2)[1].Trim()
           $bundlePath = "patches/build/libs/patches-$version.mpp"
-          if (-not (Test-Path -LiteralPath $bundlePath)) {
-              throw "Expected patch bundle was not produced: $bundlePath"
-          }
-          "path=$bundlePath" | Add-Content -Path $env:GITHUB_OUTPUT
-          "version=$version" | Add-Content -Path $env:GITHUB_OUTPUT
+          New-Item -ItemType Directory -Path (Split-Path -Parent $bundlePath) -Force | Out-Null
+          Copy-Item -LiteralPath $sourceBundle -Destination $bundlePath -Force
+
+      - name: Attest patch bundle
+        if: steps.release.outputs.new_release_published == 'true' && github.event.repository.private == false
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: 'Twitch patches ${{ steps.release.outputs.new_release_git_tag }}'
+          subject-path: ${{ runner.temp }}/patches-${{ steps.release.outputs.new_release_version }}.mpp
+
+      - name: Bootstrap Morphe tools
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: ./scripts/bootstrap-tools.ps1
 
       - name: Download Twitch from APKMirror
+        if: github.event_name != 'pull_request'
         uses: Yakov5776/gh-apkmirror-dl@v1.3
+        continue-on-error: true
         with:
           org: 'twitch-interactive-inc'
           repo: 'twitch'
@@ -67,8 +151,24 @@ jobs:
           bundle: true
           filename: 'twitch.apkm'
 
+      - name: Download Twitch from fallback URL
+        if: github.event_name != 'pull_request' && hashFiles('twitch.apkm', 'twitch.apk') == ''
+        shell: pwsh
+        env:
+          INPUT_URL: ${{ inputs.apk_url }}
+          SECRET_URL: ${{ secrets.TWITCH_APK_URL }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $url = $env:INPUT_URL
+          if (-not $url) { $url = $env:SECRET_URL }
+          if ($url) {
+              Invoke-WebRequest -Uri $url -OutFile 'twitch.apkm'
+          } else {
+              Write-Warning 'APKMirror did not provide an APK and no fallback URL was configured. The patch bundle release is unaffected; APK patching will be skipped.'
+          }
+
       - name: Patch APK with Morphe
-        if: hashFiles('twitch.apkm', 'twitch.apk') != ''
+        if: github.event_name != 'pull_request' && hashFiles('twitch.apkm', 'twitch.apk') != ''
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -101,18 +201,20 @@ jobs:
           Copy-Item -Path $patched.FullName -Destination "twitch_patched.apk" -Force
           Write-Host "Successfully generated twitch_patched.apk"
 
-      - name: Create GitHub Release and Upload Assets
-        uses: softprops/action-gh-release@v2
-        if: success()
+      - name: Upload patched APK workflow artifact
+        if: hashFiles('twitch_patched.apk') != ''
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: v${{ steps.bundle.outputs.version }}
-          name: Release v${{ steps.bundle.outputs.version }}
-          body: |
-            Automated build release containing:
-            - Morphe Patch Bundle (`.mpp`)
-            - Patched Twitch APK (`twitch_patched.apk`)
-          files: |
-            ${{ steps.bundle.outputs.path }}
-            twitch_patched.apk
+          name: twitch_patched.apk
+          path: twitch_patched.apk
+          retention-days: 14
+
+      - name: Preserve patched APK for release upload
+        if: hashFiles('twitch_patched.apk') != ''
+        run: cp twitch_patched.apk "$RUNNER_TEMP/twitch_patched.apk"
+
+      - name: Upload patched APK to semantic release
+        if: steps.release.outputs.new_release_published == 'true' && hashFiles('twitch_patched.apk') != ''
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ steps.release.outputs.new_release_git_tag }}" "$RUNNER_TEMP/twitch_patched.apk" --clobber
