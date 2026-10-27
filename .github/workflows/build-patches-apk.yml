@@ -1,12 +1,7 @@
-name: Build Patched APK
+name: Build Patches & APK
 
 on:
   workflow_dispatch:
-    inputs:
-      apk_url:
-        description: 'Direct download URL for Twitch APK/APKM (Optional - leave empty to auto-download 31.6.0 from APKMirror)'
-        required: false
-        type: string
   push:
     branches: [dev, main]
 
@@ -15,7 +10,7 @@ jobs:
     name: Build Patched APK
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: read
 
     steps:
@@ -61,42 +56,16 @@ jobs:
               throw "Expected patch bundle was not produced: $bundlePath"
           }
           "path=$bundlePath" | Add-Content -Path $env:GITHUB_OUTPUT
+          "version=$version" | Add-Content -Path $env:GITHUB_OUTPUT
 
-      - name: Upload patch bundle artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: patches-mpp
-          path: ${{ steps.bundle.outputs.path }}
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Download Twitch 31.7.0 from APKMirror
+      - name: Download Twitch from APKMirror
         uses: Yakov5776/gh-apkmirror-dl@v1.3
-        continue-on-error: true
         with:
           org: 'twitch-interactive-inc'
           repo: 'twitch'
           version: '31.7.0'
           bundle: true
           filename: 'twitch.apkm'
-
-      - name: Obtain Twitch APK / APKM Fallback
-        if: hashFiles('twitch.apkm', 'twitch.apk') == ''
-        shell: pwsh
-        env:
-          INPUT_URL: ${{ inputs.apk_url }}
-          SECRET_URL: ${{ secrets.TWITCH_APK_URL }}
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $url = $env:INPUT_URL
-          if (-not $url) { $url = $env:SECRET_URL }
-          if ($url) {
-              Write-Host "Downloading Twitch APK/APKM from provided URL..."
-              Invoke-WebRequest -Uri $url -OutFile "twitch.apkm"
-          } else {
-              Write-Host "No Twitch APK download source available and no local file found."
-              Write-Host "Skipping APK patching step. (.mpp bundle was built successfully)"
-          }
 
       - name: Patch APK with Morphe
         if: hashFiles('twitch.apkm', 'twitch.apk') != ''
@@ -132,10 +101,18 @@ jobs:
           Copy-Item -Path $patched.FullName -Destination "twitch_patched.apk" -Force
           Write-Host "Successfully generated twitch_patched.apk"
 
-      - name: Upload Patched APK Artifact
-        if: hashFiles('twitch_patched.apk') != ''
-        uses: actions/upload-artifact@v4
+      - name: Create GitHub Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        if: success()
         with:
-          name: twitch_patched.apk
-          path: twitch_patched.apk
-          retention-days: 14
+          tag_name: v${{ steps.bundle.outputs.version }}
+          name: Release v${{ steps.bundle.outputs.version }}
+          body: |
+            Automated build release containing:
+            - Morphe Patch Bundle (`.mpp`)
+            - Patched Twitch APK (`twitch_patched.apk`)
+          files: |
+            ${{ steps.bundle.outputs.path }}
+            twitch_patched.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
